@@ -185,9 +185,9 @@ test.describe('CoAuth Session 12 Users Big File Test', () => {
 
             if (checkIn) {
                 try {
-                    // Wait for document to be auto-checked in after closing
-                    // WOPI documents are automatically checked in when all users close them
-                    await user.page.waitForTimeout(5000);
+                    // Wait for document to be checked in before deleting
+                    await apiHelper.waitForDocumentCheckedIn(docEnvId);
+                    Helper.log('Document checked in, proceeding with deletion');
 
                     // Delete the document using the API helper
                     await apiHelper.deleteDocument(docEnvId);
