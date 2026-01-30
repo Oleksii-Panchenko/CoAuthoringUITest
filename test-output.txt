@@ -1,0 +1,104 @@
+
+Running 1 test using 1 worker
+
+[csppmd] Section "UserB section" found successfully.
+[csppoo4] Section "UserD section" found successfully.
+[csppoo5] Section "UserE section" found successfully.
+[csppoo12] Section "UserL section" found successfully.
+[csppoo10] Section "UserJ section" found successfully.
+[csppmd] Editor text contains "UserB section": false
+[csppoo4] Editor text contains "UserD section": false
+[csppoo12] Editor text contains "UserL section": false
+[csppoo10] Editor text contains "UserJ section": false
+[csppoo5] Editor text contains "UserE section": false
+[csppoo6] Section "UserF section" found successfully.
+[csppoo6] Editor text contains "UserF section": false
+[csppoo8] Section "UserH section" found successfully.
+[csppoo8] Editor text contains "UserH section": false
+Error deleting document: Error: page.evaluate: Error: 409 Conflict {"conflictType":"CheckedOut","error":"Document is checked out."}
+    at Object.s [as error] (https://ducot.netdocuments.com/neWeb2/bundles/ndCommon?v=t7akPxBafjvFGec15eG-Mzalp0Nq9mUFm0dlUiM-I4k1:1:901166)
+    at l (https://ducot.netdocuments.com/neWeb2/bundles/ndCommon?v=t7akPxBafjvFGec15eG-Mzalp0Nq9mUFm0dlUiM-I4k1:1:409239)
+    at Object.fireWith [as rejectWith] (https://ducot.netdocuments.com/neWeb2/bundles/ndCommon?v=t7akPxBafjvFGec15eG-Mzalp0Nq9mUFm0dlUiM-I4k1:1:409989)
+    at b (https://ducot.netdocuments.com/neWeb2/bundles/ndCommon?v=t7akPxBafjvFGec15eG-Mzalp0Nq9mUFm0dlUiM-I4k1:1:446381)
+    at XMLHttpRequest.<anonymous> (https://ducot.netdocuments.com/neWeb2/bundles/ndCommon?v=t7akPxBafjvFGec15eG-Mzalp0Nq9mUFm0dlUiM-I4k1:1:451476)
+    at Object.send (https://ducot.netdocuments.com/neWeb2/bundles/ndCommon?v=t7akPxBafjvFGec15eG-Mzalp0Nq9mUFm0dlUiM-I4k1:1:451838)
+    at i.ajax (https://ducot.netdocuments.com/neWeb2/bundles/ndCommon?v=t7akPxBafjvFGec15eG-Mzalp0Nq9mUFm0dlUiM-I4k1:1:449176)
+    at Object.doAjaxCall (https://ducot.netdocuments.com/neWeb2/bundles/ndCommon?v=t7akPxBafjvFGec15eG-Mzalp0Nq9mUFm0dlUiM-I4k1:1:903138)
+    at Object.ct [as deleteItem] (https://ducot.netdocuments.com/neWeb2/bundles/ndCommon?v=t7akPxBafjvFGec15eG-Mzalp0Nq9mUFm0dlUiM-I4k1:1:915742)
+    at eval (eval at evaluate (:290:30), <anonymous>:2:34)
+  ✘  1 [chromium] › tests/coauth-12-users.spec.ts:118:9 › CoAuth Session 12 Users Test › CoAuth session with 12 users editing document (45.4s)
+
+
+  1) [chromium] › tests/coauth-12-users.spec.ts:118:9 › CoAuth Session 12 Users Test › CoAuth session with 12 users editing document 
+
+    TimeoutError: locator.click: Timeout 10000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('#office_frame').contentFrame().locator('#WACViewPanel_EditingElement').locator('xpath=.//p[contains(normalize-space(.),\'UserB section\')]//span[@class=\'EOP\']').first()[22m
+
+
+       at ../pages/user.ts:203
+
+      201 |         } catch (error) {
+      202 |             // If click is intercepted (e.g., by presence indicators), force the click
+    > 203 |             await paragraph.click({ force: true, timeout: 10000 });
+          |                             ^
+      204 |         }
+      205 |     }
+      206 |
+        at User.clickParagraphInSection (/Users/opanc/Desktop/CoauthTest/playwright/pages/user.ts:203:29)
+        at User.clearText (/Users/opanc/Desktop/CoauthTest/playwright/pages/user.ts:272:9)
+        at User.editDocAsync (/Users/opanc/Desktop/CoauthTest/playwright/pages/user.ts:312:9)
+        at /Users/opanc/Desktop/CoauthTest/playwright/tests/coauth-12-users.spec.ts:152:13
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/coauth-12-users-CoAuth-Ses-e064d-h-12-users-editing-document-chromium/test-failed-10.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/coauth-12-users-CoAuth-Ses-e064d-h-12-users-editing-document-chromium/test-failed-4.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/coauth-12-users-CoAuth-Ses-e064d-h-12-users-editing-document-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/coauth-12-users-CoAuth-Ses-e064d-h-12-users-editing-document-chromium/test-failed-2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/coauth-12-users-CoAuth-Ses-e064d-h-12-users-editing-document-chromium/test-failed-11.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/coauth-12-users-CoAuth-Ses-e064d-h-12-users-editing-document-chromium/test-failed-12.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/coauth-12-users-CoAuth-Ses-e064d-h-12-users-editing-document-chromium/test-failed-5.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #8: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/coauth-12-users-CoAuth-Ses-e064d-h-12-users-editing-document-chromium/test-failed-6.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #9: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/coauth-12-users-CoAuth-Ses-e064d-h-12-users-editing-document-chromium/test-failed-3.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #10: screenshot (image/png) ─────────────────────────────────────────────────────────
+    test-results/coauth-12-users-CoAuth-Ses-e064d-h-12-users-editing-document-chromium/test-failed-9.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #11: screenshot (image/png) ─────────────────────────────────────────────────────────
+    test-results/coauth-12-users-CoAuth-Ses-e064d-h-12-users-editing-document-chromium/test-failed-7.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #12: screenshot (image/png) ─────────────────────────────────────────────────────────
+    test-results/coauth-12-users-CoAuth-Ses-e064d-h-12-users-editing-document-chromium/test-failed-8.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/coauth-12-users-CoAuth-Ses-e064d-h-12-users-editing-document-chromium/error-context.md
+
+  1 failed
+    [chromium] › tests/coauth-12-users.spec.ts:118:9 › CoAuth Session 12 Users Test › CoAuth session with 12 users editing document 
