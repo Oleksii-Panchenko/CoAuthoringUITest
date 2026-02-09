@@ -81,7 +81,8 @@ test.describe('CoAuth Session 12 Users Big File Test', () => {
             users.push(new User('csppmd', 'read4few', baseUrl, 'UserB'));
             //sourceDocEnvId = '4833-5453-1267';//13mb
             //sourceDocEnvId = '4840-2568-5443';//60mb
-            sourceDocEnvId = "4831-1139-9363";//32mb
+            //sourceDocEnvId = "4831-1139-9363";//32mb
+            sourceDocEnvId = "4820-0102-3171";//20mb
             destinationEnvId = ':Ducot5:y:1:5:h:^F251030114932046.nev';
         
 
@@ -100,7 +101,7 @@ test.describe('CoAuth Session 12 Users Big File Test', () => {
         apiHelper = new ApiHelper(users[0].page);
 
         // Copy the source document
-        const copyResult = await apiHelper.copyDocument(sourceDocEnvId, destinationEnvId, env);
+        const copyResult = await apiHelper.copyDocument(sourceDocEnvId, destinationEnvId, env, false);
         docEnvId = copyResult.envId;
         docName = copyResult.docName;
         Helper.log(`Created document: ${docEnvId} (${docName})`);
