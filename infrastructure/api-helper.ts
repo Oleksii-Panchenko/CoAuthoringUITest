@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import { Page, expect } from '@playwright/test';
 
 /**
  * Helper class for NetDocuments REST API operations
@@ -167,21 +167,23 @@ export class ApiHelper {
      * @returns The new document modified timestamp
      */
     async waitForDocumentModifiedChanged(docEnvId: string, initialModified: number, timeout: number = 240000, pollInterval: number = 3000): Promise<number> {
-        const startTime = Date.now();
         console.log(`Waiting for document modified date to change from ${new Date(initialModified).toISOString()}...`);
 
-        while (Date.now() - startTime < timeout) {
-            const currentModified = await this.getDocumentModified(docEnvId);
-
-            if (currentModified !== initialModified) {
-                console.log(`Document modified changed: ${new Date(initialModified).toISOString()} -> ${new Date(currentModified).toISOString()}`);
-                return currentModified;
+        let result = initialModified;
+        await expect.poll(
+            async () => {
+                result = await this.getDocumentModified(docEnvId);
+                return result;
+            },
+            {
+                message: `Document modified date did not change from ${new Date(initialModified).toISOString()}`,
+                timeout,
+                intervals: [pollInterval]
             }
+        ).not.toBe(initialModified);
 
-            await this.page.waitForTimeout(pollInterval);
-        }
-
-        throw new Error(`Document modified date did not change from ${new Date(initialModified).toISOString()} within ${timeout}ms`);
+        console.log(`Document modified changed: ${new Date(initialModified).toISOString()} -> ${new Date(result).toISOString()}`);
+        return result;
     }
 
     /**
@@ -193,21 +195,23 @@ export class ApiHelper {
      * @returns The new document size
      */
     async waitForDocumentSizeChanged(docEnvId: string, initialSize: number, timeout: number = 120000, pollInterval: number = 3000): Promise<number> {
-        const startTime = Date.now();
         console.log(`Waiting for document size to change from ${initialSize} bytes...`);
 
-        while (Date.now() - startTime < timeout) {
-            const currentSize = await this.getDocumentSize(docEnvId);
-
-            if (currentSize !== initialSize) {
-                console.log(`Document size changed: ${initialSize} -> ${currentSize} bytes`);
-                return currentSize;
+        let result = initialSize;
+        await expect.poll(
+            async () => {
+                result = await this.getDocumentSize(docEnvId);
+                return result;
+            },
+            {
+                message: `Document size did not change from ${initialSize} bytes`,
+                timeout,
+                intervals: [pollInterval]
             }
+        ).not.toBe(initialSize);
 
-            await this.page.waitForTimeout(pollInterval);
-        }
-
-        throw new Error(`Document size did not change from ${initialSize} bytes within ${timeout}ms`);
+        console.log(`Document size changed: ${initialSize} -> ${result} bytes`);
+        return result;
     }
 
     /**
@@ -219,36 +223,34 @@ export class ApiHelper {
      * @returns true if document is found, throws error on timeout
      */
     async waitForIndexed(docName: string, cabGuid: string = 'NG-ZEXODA50', timeout: number = 60000, pollInterval: number = 2000): Promise<boolean> {
-        const startTime = Date.now();
         console.log(`Waiting for document "${docName}" to be indexed...`);
 
-        while (Date.now() - startTime < timeout) {
-            const found = await this.page.evaluate(
-                ({ cabGuid, docName }) => {
-                    try {
-                        const result = (window as any).api.search.performSearch({
-                            cabGuid: cabGuid,
-                            criteria: ` =3(${docName})`
-                        });
-
-                        // Check if response has list property with at least 1 element
-                        return result && result.list && result.list.length > 0;
-                    } catch {
-                        return false;
-                    }
-                },
-                { cabGuid, docName }
-            );
-
-            if (found) {
-                console.log(`Document "${docName}" is now indexed.`);
-                return true;
+        await expect.poll(
+            async () => {
+                return await this.page.evaluate(
+                    ({ cabGuid, docName }) => {
+                        try {
+                            const result = (window as any).api.search.performSearch({
+                                cabGuid: cabGuid,
+                                criteria: ` =3(${docName})`
+                            });
+                            return result && result.list && result.list.length > 0;
+                        } catch {
+                            return false;
+                        }
+                    },
+                    { cabGuid, docName }
+                );
+            },
+            {
+                message: `Document "${docName}" was not indexed`,
+                timeout,
+                intervals: [pollInterval]
             }
+        ).toBe(true);
 
-            await this.page.waitForTimeout(pollInterval);
-        }
-
-        throw new Error(`Document "${docName}" was not indexed within ${timeout}ms`);
+        console.log(`Document "${docName}" is now indexed.`);
+        return true;
     }
 }
 

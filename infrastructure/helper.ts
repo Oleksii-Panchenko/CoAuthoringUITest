@@ -6,36 +6,6 @@ import * as path from 'path';
  */
 export class Helper {
     /**
-     * Wait for a condition to be true
-     * @param func Function that returns a boolean or Promise<boolean>
-     * @param timeout Timeout in milliseconds (default: 60000)
-     * @param period Check interval in milliseconds (default: 1000)
-     * @param errMessage Error message to throw on timeout
-     */
-    static async waitForTrue(
-        func: () => boolean | Promise<boolean>,
-        timeout: number = 60000,
-        period: number = 1000,
-        errMessage?: string
-    ): Promise<void> {
-        const startTime = Date.now();
-        
-        while (Date.now() - startTime < timeout) {
-            try {
-                const result = await func();
-                if (result) {
-                    return;
-                }
-            } catch (error) {
-                // Ignore exceptions and retry
-            }
-            await new Promise(resolve => setTimeout(resolve, period));
-        }
-        
-        throw new Error(errMessage || `waitForTrue timed out after ${timeout}ms`);
-    }
-
-    /**
      * Generate a random string of specified length
      * @param length Length of the random string
      * @returns Random string containing uppercase letters and digits
@@ -83,14 +53,6 @@ export class Helper {
                 fs.unlinkSync(filePath);
             }
         }
-    }
-
-    /**
-     * Sleep for specified milliseconds
-     * @param ms Milliseconds to sleep
-     */
-    static async sleep(ms: number): Promise<void> {
-        return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
 

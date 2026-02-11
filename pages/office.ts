@@ -1,6 +1,4 @@
-import { Page, FrameLocator } from '@playwright/test';
-import { Helper } from '../infrastructure/helper';
-import { expect } from '@playwright/test';
+import { Page, FrameLocator, expect } from '@playwright/test';
 
 /**
  * Office class for interacting with Office Online documents
@@ -91,8 +89,8 @@ export class Office {
 
     async waitToBeSaved(): Promise<void>
     {
-        let _saved = this.frame.locator(this.saved);
-        await _saved.waitFor({ state: 'attached', timeout: 30000 });
+        const savedIndicator = this.frame.locator(this.saved);
+        await expect(savedIndicator).toBeAttached({ timeout: 30000 });
     }
     // /**
     //  * Edit document by replacing text in a section
@@ -132,25 +130,11 @@ export class Office {
         await this.clearText(section);
         const editor = this.frame.locator(this.editorLocator);
 
-        // Type character by character with delay
-        for (const char of newText) {
-            await editor.pressSequentially(char, { delay: 0 });
-        }
+        // Type the full string
+        await editor.pressSequentially(newText);
 
-        // Wait for text to appear using frame locator
-       return await Helper.waitForTrue(
-            async () => {
-                try {
-                    const text = await editor.textContent();
-                    return text?.trim()==newText || false;
-                } catch {
-                    return false;
-                }
-            },
-            60000,
-            1000,
-            `Text "${newText}" did not appear in editor`
-        );       
+        // Wait for text to appear using native Playwright assertion
+        await expect(editor).toHaveText(newText, { timeout: 60000 });
     }
 
     /**

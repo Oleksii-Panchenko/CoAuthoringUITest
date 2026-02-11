@@ -1,6 +1,5 @@
-import { Page, BrowserContext, chromium, Browser } from '@playwright/test';
+import { Page, BrowserContext, chromium, Browser, expect } from '@playwright/test';
 import { Office } from './office';
-import { Helper } from '../infrastructure/helper';
 
 /**
  * User class representing a user session with browser and page
@@ -83,8 +82,9 @@ export class User {
             await this.page.goto(url, { waitUntil: 'load'});
             await this.waitForDocumentLoaded();
             // Check if frame locator is present
+            const frameLocator = this.page.locator(this.officeFrameLocator);
             try {
-                await this.page.waitForSelector(this.officeFrameLocator, { state: 'attached', timeout: 10000 });
+                await expect(frameLocator).toBeAttached({ timeout: 10000 });
             } catch {
                 if (attempt < maxRetries) {
                     console.log(`[${this.userName}] Office frame not present, reloading (attempt ${attempt}/${maxRetries})...`);
@@ -104,9 +104,12 @@ export class User {
             // Check if slideout is visible
             try {
                 const frame = this.page.frameLocator(this.officeFrameLocator);
-                isVisible = await frame.locator(this.closeAddinButtonLocator).isVisible({ timeout: 20000 });
+                const closeButton = frame.locator(this.closeAddinButtonLocator);
+                await expect(closeButton).toBeVisible({ timeout: 20000 });
+                isVisible = true;
             } catch {
                 console.log(`[${this.userName}] Slideout not visible`);
+                isVisible = false;
             }
 
             if (isVisible && !oldWopi) {
