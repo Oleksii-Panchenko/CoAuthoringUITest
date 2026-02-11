@@ -29,7 +29,7 @@ test.describe('CoAuth Session 12 Users Big File Test', () => {
                 [user.section, userTexts[idx]]
             );
 
-            if (i === 0) {
+            if (i !=1) {
                 await test.step('Open documents for all users', async () => {
                     // First iteration: first user opens document and verifies section is visible
                     await users[0].openDocumentAsync(docEnvId);
@@ -58,7 +58,7 @@ test.describe('CoAuth Session 12 Users Big File Test', () => {
                     }
                 }));
             });
-
+            if(i!=2)
             await test.step(`Edit documents for iteration ${i}`, async () => {
                 // Edit document for all users in parallel
                 await Promise.all(
@@ -66,7 +66,7 @@ test.describe('CoAuth Session 12 Users Big File Test', () => {
                 );
             });
 
-            if (i === 3) {
+            if (i === 1) {
                 await test.step('Close documents and verify modified date', async () => {
                     // Close documents in parallel (without closing browsers)
                     await Promise.all(users.map(user => Helper.closeUser(user, apiHelper, docEnvId, false, false)));

@@ -105,7 +105,7 @@ export class User {
             try {
                 const frame = this.page.frameLocator(this.officeFrameLocator);
                 const closeButton = frame.locator(this.closeAddinButtonLocator);
-                await expect(closeButton).toBeVisible({ timeout: 20000 });
+                await expect(closeButton).toBeVisible({ timeout: 5000 });
                 isVisible = true;
             } catch {
                 console.log(`[${this.userName}] Slideout not visible`);
