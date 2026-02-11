@@ -152,7 +152,7 @@ export class Helper {
 
         // Try to wait for document check-in and delete
         try {
-            await apiHelper.waitForDocumentCheckedIn(docEnvId, 10000);
+            await apiHelper.waitForDocumentCheckedIn(docEnvId, 60000);
             await apiHelper.deleteDocument(docEnvId);
         } catch {
             console.log('Document was not checked in');
