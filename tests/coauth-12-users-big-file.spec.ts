@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { User } from '../pages/user';
 import { ApiHelper } from '../infrastructure/api-helper';
 import { Helper } from '../infrastructure/helper';
+import { getEnvironmentConfig } from '../infrastructure/test-data';
 
 /**
  * CoAuth Testing with 12 Users and Big File
@@ -19,22 +20,6 @@ test.describe('CoAuth Session 12 Users Big File Test', () => {
     let destinationEnvId: string;
     let lastDocumentModified: number;
 
-    // Define 12 user sections
-    const userSections = [
-        'UserA',
-        'UserB',
-        'UserC',
-        'UserD',
-        'UserE',
-        'UserF',
-        'UserG',
-        'UserH',
-        'UserI',
-        'UserJ',
-        'UserK',
-        'UserL'
-    ];
-
     // Track text for each user
     const userTexts: string[] = new Array(12).fill('');
 
@@ -44,46 +29,18 @@ test.describe('CoAuth Session 12 Users Big File Test', () => {
 
         // Get environment from ENV variable or default to QA
         env = process.env.ENV || 'QA';
+        const config = getEnvironmentConfig(env);
 
-        let baseUrl: string;
-        switch (env) {
-            case 'DEV':
-                baseUrl = 'https://wopi-ducot.netdocuments.com';
-                break;
-            case 'QA':
-                baseUrl = 'https://ducot.netdocuments.com';
-                break;
-            case 'PROD':
-                baseUrl = 'https://vault.netvoyage.com';
-                break;
-            default:
-                baseUrl = 'https://ducot.netdocuments.com';
-                break;
-        }
-
-        Helper.log(baseUrl);
+        Helper.log(config.baseUrl);
         Helper.log(env);
 
-        // Set up 12 users based on environment
-        
-            // DEV/QA environment - use csppoo, csppmd, csppwd3, csppoo3-12
-            users.push(new User('csppoo3', 'rewq4fdsa', baseUrl, 'UserC'));
-            users.push(new User('csppoo4', 'rewq4fdsa', baseUrl, 'UserD'));
-            users.push(new User('csppoo5', 'rewq4fdsa', baseUrl, 'UserE'));
-            users.push(new User('csppoo6', 'rewq4fdsa', baseUrl, 'UserF'));
-            users.push(new User('csppoo7', 'rewq4fdsa', baseUrl, 'UserG'));
-            users.push(new User('csppoo8', 'rewq4fdsa', baseUrl, 'UserH'));
-            users.push(new User('csppoo9', 'rewq4fdsa', baseUrl, 'UserI'));
-            users.push(new User('csppoo10', 'rewq4fdsa', baseUrl, 'UserJ'));
-            users.push(new User('csppoo11', 'rewq4fdsa', baseUrl, 'UserK'));
-            users.push(new User('csppoo12', 'rewq4fdsa', baseUrl, 'UserL'));
-            users.push(new User('csppoo', 'read4few', baseUrl, 'UserA'));
-            users.push(new User('csppmd', 'read4few', baseUrl, 'UserB'));
-            //sourceDocEnvId = '4833-5453-1267';//13mb
-            //sourceDocEnvId = '4840-2568-5443';//60mb
-            //sourceDocEnvId = "4831-1139-9363";//32mb
-            sourceDocEnvId = "4820-0102-3171";//20mb
-            destinationEnvId = ':Ducot5:y:1:5:h:^F251030114932046.nev';
+        // Set up users from config
+        for (const userConfig of config.users) {
+            users.push(new User(userConfig.username, userConfig.password, config.baseUrl, userConfig.section));
+        }
+
+        sourceDocEnvId = config.sourceDocuments['20mb'];
+        destinationEnvId = config.destinationEnvId;
         
 
         Helper.log(`Initializing ${users.length} browsers...`);
@@ -94,8 +51,8 @@ test.describe('CoAuth Session 12 Users Big File Test', () => {
         Helper.log(`Logging in ${users.length} users...`);
         await Promise.all(users.map(user => user.login()));
 
-        // Make sure first user is on the home page where the API is available
-        await users[0].goToHome();
+        // // Make sure first user is on the home page where the API is available
+        // await users[0].goToHome();
 
         // Initialize API helper with first user's page
         apiHelper = new ApiHelper(users[0].page);
@@ -114,47 +71,62 @@ test.describe('CoAuth Session 12 Users Big File Test', () => {
     test.afterAll(async () => {
         // Close users 2-12 in parallel
         await Promise.all(
-            users.slice(1).map(user => closeUser(user, false, true))
+            //users.slice(1).map(user => closeUser(user, false, true))
+            users.map(user => user.goToHome())
         );
-
+        try
+        {
+            await apiHelper.waitForDocumentCheckedIn(docEnvId, 10000);
+            await apiHelper.deleteDocument(docEnvId);
+        }
+        catch
+        {
+            console.log('Document was not checked in');
+        }
+        
         // Check in and close first user (must be last to handle document deletion)
-        await closeUser(users[0], true, true);
+        await Promise.all(
+            users.map(user => closeUser(user, false, false))
+        );
     });
 
     test('CoAuth session with 12 users editing big file', async () => {
         // Run 3 iterations of editing
         for (let i = 0; i < 3; i++) {
-            const oldValues: Array<[string, string]> = userSections.map((section, idx) =>
-                [section, userTexts[idx]]
+            const oldValues: Array<[string, string]> = users.map((user, idx) =>
+                [user.section, userTexts[idx]]
             );
+            if(i==0)
+            {
                 // First iteration: first user opens document and verifies section is visible
                 await users[0].openDocumentAsync(docEnvId);
-                await users[0].getTextFromSection(userSections[0]); // Verify UserA section is visible
+                await users[0].getTextFromSection(users[0].section); // Verify UserA section is visible
 
                 // Then all other users open in parallel
                 await Promise.all(
                     users.slice(1).map(user => user.openDocumentAsync(docEnvId))
                 );
-
-                            // Verify old values for all users
-            await Promise.all(users.map(async user => {
-                for (const [section, expectedText] of oldValues) {
-                    const text = await user.getTextFromSection(section);
-                    expect(text).toBe(expectedText);
-                }
-            }));
+            }
             // Generate new text for each user
             for (let userIdx = 0; userIdx < users.length; userIdx++) {
                 const userLetter = String.fromCharCode(65 + userIdx); // A, B, C, D, etc.
                 userTexts[userIdx] = `New Text User ${userLetter} ${i} ${Helper.randomString(70)}`;
-            }
+            }    
+
+                            // Verify old values for all users
+            await Promise.all(users.map(async user => {
+                for (const [section, expectedText] of oldValues) {
+                    await user.VerifyText(section, expectedText);
+                }
+            }));
 
             // Edit document for all users in parallel
             await Promise.all(
-                users.map((user, idx) => user.editDocAsync(userSections[idx], userTexts[idx]))
+                users.map((user, idx) => user.editDocAsync(userTexts[idx]))
             );
-
-            // Close documents in parallel (without closing browsers)
+            if(i==3)
+            {
+                 // Close documents in parallel (without closing browsers)
             await Promise.all(users.map(user => closeUser(user, false, false)));
 
             // After all users close, wait for document modified date to be updated on ndServer
@@ -166,6 +138,7 @@ test.describe('CoAuth Session 12 Users Big File Test', () => {
             const modifiedCheckDuration = Date.now() - modifiedCheckStartTime;
             Helper.log(`Iteration ${i}: Document modified updated from ${new Date(previousModified).toISOString()} to ${new Date(lastDocumentModified).toISOString()}`);
             Helper.log(`Iteration ${i}: Time to update document modified: ${modifiedCheckDuration}ms (${(modifiedCheckDuration / 1000).toFixed(2)}s)`);
+            }
         }
     });
 

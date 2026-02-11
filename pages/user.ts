@@ -1,5 +1,6 @@
 import { Page, BrowserContext, chromium, Browser } from '@playwright/test';
 import { Office } from './office';
+import { Helper } from '../infrastructure/helper';
 
 /**
  * User class representing a user session with browser and page
@@ -29,14 +30,26 @@ export class User {
      * Initialize browser, context and page
      */
     async initialize(headless: boolean = true): Promise<void> {
+        const headlessArgs = [                                                                                                                                                  
+                 // Disables the local network access check entirely
+                '--disable-features=LocalNetworkAccessChecks',
+                // Alternative flag if the above doesn't work in your Chromium version
+                '--block-insecure-private-network-requests=false',
+                // Optional: Deny all permission prompts to avoid test hangs
+                '--deny-permission-prompts',                                                                                                                                
+                '--disable-infobars',                                                                                                                                              
+                '--disable-notifications',                                                                                                                                         
+                '--disable-popup-blocking'
+              ];
+              let args =  headlessArgs.concat(['--start-maximized'])
         this.browser = await chromium.launch({
             headless: headless,
-            args: headless ? [] : ['--start-maximized']
+            args: headless ? headlessArgs : args
         });
 
         // For non-headless mode, use a large viewport instead of null to avoid deviceScaleFactor conflict
         this.context = await this.browser.newContext({
-            viewport: { width: 1650, height: 1080 }
+            viewport: { width: 1080, height: 1080 }
         });
 
         this.page = await this.context.newPage();
@@ -76,6 +89,7 @@ export class User {
                 if (attempt < maxRetries) {
                     console.log(`[${this.userName}] Office frame not present, reloading (attempt ${attempt}/${maxRetries})...`);
                     await this.page.reload({ waitUntil: 'load', timeout: 30000 });
+                    await this.waitForDocumentLoaded();
                     continue;
                 } else {
                     console.log(`[${this.userName}] Office frame not found after ${maxRetries} attempts`);
@@ -98,7 +112,7 @@ export class User {
             if (isVisible && !oldWopi) {
                 await this.office.closeAddin();
             } else {
-                await this.page.waitForTimeout(2000);
+               // await this.page.waitForTimeout(2000);
             }
 
             return; // Success
@@ -125,24 +139,39 @@ export class User {
      * @param section Section name
      * @returns Text content of the section
      */
-    async getTextFromSection(section: string): Promise<string> {
-        return await this.office.getTextFromSection(section);
+    async getTextFromSection(sectionToCheck: string): Promise<string> {
+        let text =  await this.office.getTextFromSection(sectionToCheck);
+        await this.office.moveOutCursor(this.section);
+        return text;
     }
-
+    async VerifyText(sectionToCheck: string, expectedText:string): Promise<void>
+    {
+        await this.office.verifyText(sectionToCheck, expectedText);
+    }
+    async VerifySectionsText(oldValues: Array<[string, string]>): Promise<boolean>
+    {
+        // for (const [section, expectedText] of oldValues) {
+        //             const text = await this.getTextFromSection(section);
+        //             expect(text).toBe(expectedText);
+        //         }
+        return await oldValues.every(async v => v[1] === await this.getTextFromSection(v[1]));
+    }
     /**
      * Edit document asynchronously with character-by-character typing
      * @param section Section name
      * @param newText New text to insert
      */
-    async editDocAsync(section: string, newText: string): Promise<boolean> {
-        return await this.office.editDocAsync(section, newText);
+    async editDocAsync(newText: string): Promise<void> {
+        await this.office.editDocAsync(this.section, newText);
+        await this.office.moveOutCursor(this.section);
+        return await this.office.waitToBeSaved();   
     }
 
     /**
      * Wait for document content to be fully loaded
      * @param timeout Timeout in milliseconds (default: 120000)
      */
-    async waitForDocumentLoaded(timeout: number = 120000): Promise<void> {
+    async waitForDocumentLoaded(timeout: number = 65000): Promise<void> {
         await this.office.waitForDocumentLoaded(timeout);
     }
 

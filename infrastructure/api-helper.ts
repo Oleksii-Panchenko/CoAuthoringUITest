@@ -84,14 +84,14 @@ export class ApiHelper {
      * @param docEnvId Document environment ID
      * @param timeout Timeout in milliseconds (default: 60000)
      */
-    async waitForDocumentCheckedIn(docEnvId: string, timeout: number = 60000): Promise<void> {
+    async waitForDocumentCheckedIn(docEnvId: string, timeout: number = 60000, polling:number = 5000): Promise<void> {
         await this.page.waitForFunction(
             (envId) => {
                 const info = (window as any).api.document.getInfo({ id: envId });
                 return info.checkedOut === null || info.checkedOut === undefined;
             },
             docEnvId,
-            { timeout }
+            { polling, timeout }
         );
     }
 
