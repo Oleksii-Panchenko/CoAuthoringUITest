@@ -90,7 +90,7 @@ export class Office {
     async waitToBeSaved(): Promise<void>
     {
         const savedIndicator = this.frame.locator(this.saved);
-        await expect(savedIndicator).toBeAttached({ timeout: 30000 });
+        await expect(savedIndicator).toBeAttached({ timeout: 40000 });
     }
     // /**
     //  * Edit document by replacing text in a section

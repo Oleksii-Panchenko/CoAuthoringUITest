@@ -16,7 +16,7 @@ export class User {
     public office!: Office;
 
     private officeFrameLocator = '#office_frame';
-    private closeAddinButtonLocator = "button[id*='TaskPaneCloseBtnApp']";
+    private closeAddinButtonLocator = 'xpath=//div[@id="FarPaneRegion"]//button[text()="Allow and Continue"]';
 
     constructor(userName: string, password: string, baseUrl: string, section: string) {
         this.userName = userName;
@@ -100,16 +100,28 @@ export class User {
             const officeForm = this.page.locator('#office_form');
             const action = await officeForm.getAttribute('action');
             const oldWopi = action?.includes('wopi-') || false;
+            const frame = this.page.frameLocator(this.officeFrameLocator);
+            const closeButton = frame.locator(this.closeAddinButtonLocator);
 
             // Check if slideout is visible
             try {
-                const frame = this.page.frameLocator(this.officeFrameLocator);
-                // const closeButton = frame.locator(this.closeAddinButtonLocator);
-                // await expect(closeButton).toBeVisible({ timeout: 5000 });
-                // isVisible = true;
-            } catch {
-                console.log(`[${this.userName}] Slideout not visible`);
-                isVisible = false;
+                let i = 0;
+                await expect(async () => {
+                            if(i!=0)
+                            {
+                                await this.page.reload({ waitUntil: 'load', timeout: 30000 });
+                                await this.waitForDocumentLoaded();
+                            }
+                            await expect(closeButton).toBeVisible({ timeout: 20000 });
+                            i++;
+                            }).toPass({
+                                    intervals: [60_000],
+                                    timeout: 200_000});
+                        isVisible = true;
+                }
+             catch {
+                    console.log(`[${this.userName}] Slideout not visible`);
+                    isVisible = false;
             }
 
             if (isVisible && !oldWopi) {

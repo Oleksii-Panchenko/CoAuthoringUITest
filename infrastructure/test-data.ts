@@ -55,7 +55,7 @@ const envConfigs: Record<string, EnvironmentConfig> = {
             { username: 'csppoo11', password: 'rewq4fdsa', section: 'UserI' },
             { username: 'csppoo12', password: 'rewq4fdsa', section: 'UserJ' },
             { username: 'csppoo', password: 'read4few', section: 'UserK' },
-            { username: 'csppmd', password: 'read4few', section: 'UserL' },
+            { username: 'csppmd', password: 'read4few', section: 'UserL' }
         ],
         sourceDocuments: {
             '13mb': '4833-5453-1267',
