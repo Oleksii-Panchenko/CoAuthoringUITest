@@ -7,7 +7,7 @@ import { Helper, TestContext } from '../infrastructure/helper';
  */
 test.describe('CoAuth Session 12 Users Big File Test', () => {
     let ctx: TestContext;
-    let headless = true;
+    const headless = true;
 
     // Track text for each user
     const userTexts: string[] = new Array(12).fill('');
@@ -32,12 +32,12 @@ test.describe('CoAuth Session 12 Users Big File Test', () => {
             if (i !=1) {
                 await test.step('Open documents for all users', async () => {
                     // First iteration: first user opens document and verifies section is visible
-                    await users[0].openDocumentAsync(docEnvId);
+                    await users[0].openDocument(docEnvId);
                     await users[0].getTextFromSection(users[0].section); // Verify UserA section is visible
 
                     // Then all other users open in parallel
                     await Promise.all(
-                        users.slice(1).map(user => user.openDocumentAsync(docEnvId))
+                        users.slice(1).map(user => user.openDocument(docEnvId))
                     );
                 });
             }
@@ -54,7 +54,7 @@ test.describe('CoAuth Session 12 Users Big File Test', () => {
                 // Verify old values for all users
                 await Promise.all(users.map(async user => {
                     for (const [section, expectedText] of oldValues) {
-                        await user.VerifyText(section, expectedText);
+                        await user.verifyText(section, expectedText);
                     }
                 }));
             });

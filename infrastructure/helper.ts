@@ -88,17 +88,14 @@ export class Helper {
         headless: boolean = false,
         waitForIndexed: boolean = false
     ): Promise<TestContext> {
-        // Clean up logs
         Helper.fileCleanup('logs');
 
-        // Get environment from ENV variable or default to QA
         const env = envName || process.env.ENV || 'QA';
         const config = getEnvironmentConfig(env);
 
         Helper.log(config.baseUrl);
         Helper.log(env);
 
-        // Set up users from config
         const users: User[] = [];
         for (const userConfig of config.users) {
             users.push(new User(userConfig.username, userConfig.password, config.baseUrl, userConfig.section));
@@ -108,17 +105,13 @@ export class Helper {
         const destinationEnvId = config.destinationEnvId;
 
         Helper.log(`Initializing ${users.length} browsers...`);
-        // Initialize all users in parallel
         await Promise.all(users.map(user => user.initialize(headless)));
 
-        // Login all users in parallel
         Helper.log(`Logging in ${users.length} users...`);
         await Promise.all(users.map(user => user.login()));
 
-        // Initialize API helper with first user's page
         const apiHelper = new ApiHelper(users[0].page);
 
-        // Copy the source document
         const copyResult = await apiHelper.copyDocument(sourceDocEnvId, destinationEnvId, env, waitForIndexed);
         const docEnvId = copyResult.envId;
         const docName = copyResult.docName;
@@ -151,7 +144,7 @@ export class Helper {
         await Promise.all(users.map(async user => {
             try {
                 const responsePromise = user.page.waitForResponse('**/we/OneNote.ashx?perfTag=LockRelease_1**', { timeout: 30000 });
-                user.goToHome();
+                await user.goToHome();
                 const response = await responsePromise;
                 const status = response.status();
                 if (status !== 200) {
@@ -162,7 +155,6 @@ export class Helper {
             }
         }));
 
-        // Try to wait for document check-in and delete
         try {
             await apiHelper.waitForDocumentCheckedIn(docEnvId, 60000);
             await apiHelper.deleteDocument(docEnvId);
@@ -170,7 +162,6 @@ export class Helper {
             console.log('Document was not checked in');
         }
 
-        // Close all user browsers
         await Promise.all(users.map(user => Helper.closeUser(user, apiHelper, docEnvId, false, false)));
     }
 
@@ -199,16 +190,10 @@ export class Helper {
 
             if (checkIn) {
                 try {
-                    // Wait for document to be checked in before deleting
                     await apiHelper.waitForDocumentCheckedIn(docEnvId);
-                    Helper.log('Document checked in, proceeding with deletion');
-
-                    // Delete the document using the API helper
                     await apiHelper.deleteDocument(docEnvId);
-                    Helper.log('Document deleted successfully');
                 } catch (deleteError) {
                     console.log(`Error deleting document: ${deleteError}`);
-                    // Document might already be deleted or not accessible
                 }
             }
 
