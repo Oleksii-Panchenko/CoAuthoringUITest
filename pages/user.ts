@@ -112,10 +112,10 @@ export class User {
                                 await this.page.reload({ waitUntil: 'load', timeout: 30000 });
                                 await this.waitForDocumentLoaded();
                             }
-                            await expect(closeButton).toBeVisible({ timeout: 20000 });
+                            await expect(closeButton).toBeVisible({ timeout: 10000 });
                             i++;
                             }).toPass({
-                                    intervals: [60_000],
+                                    intervals: [10_000],
                                     timeout: 200_000});
                         isVisible = true;
                 }
@@ -148,7 +148,6 @@ export class User {
         await this.page.goto(this.baseUrl);
         await this.page.waitForURL(`${this.baseUrl}/neWeb2/home`, { timeout: 60000 });
     }
-
     /**
      * Get text from a section
      * @param section Section name

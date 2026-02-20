@@ -12,6 +12,7 @@ export interface EnvironmentConfig {
         '20mb': string;
         '32mb': string;
         '60mb': string;
+        '95mb': string;
     };
     destinationEnvId: string;
 }
@@ -21,31 +22,7 @@ const envConfigs: Record<string, EnvironmentConfig> = {
         baseUrl: 'https://wopi-ducot.netdocuments.com',
         users: [
             { username: 'csppoo3', password: 'rewq4fdsa', section: 'UserA' },
-            { username: 'csppoo4', password: 'rewq4fdsa', section: 'UserB' },
-            { username: 'csppoo5', password: 'rewq4fdsa', section: 'UserC' },
-            { username: 'csppoo6', password: 'rewq4fdsa', section: 'UserD' },
-            { username: 'csppoo7', password: 'rewq4fdsa', section: 'UserE' },
-            { username: 'csppoo8', password: 'rewq4fdsa', section: 'UserF' },
-            { username: 'csppoo9', password: 'rewq4fdsa', section: 'UserG' },
-            { username: 'csppoo10', password: 'rewq4fdsa', section: 'UserH' },
-            { username: 'csppoo11', password: 'rewq4fdsa', section: 'UserI' },
-            { username: 'csppoo12', password: 'rewq4fdsa', section: 'UserJ' },
-            { username: 'csppoo', password: 'read4few', section: 'UserK' },
-            { username: 'csppmd', password: 'read4few', section: 'UserL' },
-        ],
-        sourceDocuments: {
-            '13mb': '4833-5453-1267',
-            '20mb': '4820-0102-3171',
-            '32mb': '4831-1139-9363',
-            '60mb': '4840-2568-5443',
-        },
-        destinationEnvId: ':Ducot5:y:1:5:h:^F251030114932046.nev',
-    },
-    QA: {
-        baseUrl: 'https://ducot.netdocuments.com',
-        users: [
-            { username: 'csppoo3', password: 'rewq4fdsa', section: 'UserA' },
-            { username: 'csppoo4', password: 'rewq4fdsa', section: 'UserB' },
+            { username: 'csppwd3', password: 'rewq4fdsa', section: 'UserB' },
             { username: 'csppoo5', password: 'rewq4fdsa', section: 'UserC' },
             { username: 'csppoo6', password: 'rewq4fdsa', section: 'UserD' },
             { username: 'csppoo7', password: 'rewq4fdsa', section: 'UserE' },
@@ -62,14 +39,15 @@ const envConfigs: Record<string, EnvironmentConfig> = {
             '20mb': '4820-0102-3171',
             '32mb': '4831-1139-9363',
             '60mb': '4840-2568-5443',
+            '95mb': '4843-6713-4915'
         },
         destinationEnvId: ':Ducot5:y:1:5:h:^F251030114932046.nev',
     },
-    PROD: {
-        baseUrl: 'https://vault.netvoyage.com',
+    QA: {
+        baseUrl: 'https://ducot.netdocuments.com',
         users: [
             { username: 'csppoo3', password: 'rewq4fdsa', section: 'UserA' },
-            { username: 'csppoo4', password: 'rewq4fdsa', section: 'UserB' },
+            { username: 'csppwd3', password: 'rewq4fdsa', section: 'UserB' },
             { username: 'csppoo5', password: 'rewq4fdsa', section: 'UserC' },
             { username: 'csppoo6', password: 'rewq4fdsa', section: 'UserD' },
             { username: 'csppoo7', password: 'rewq4fdsa', section: 'UserE' },
@@ -79,15 +57,41 @@ const envConfigs: Record<string, EnvironmentConfig> = {
             { username: 'csppoo11', password: 'rewq4fdsa', section: 'UserI' },
             { username: 'csppoo12', password: 'rewq4fdsa', section: 'UserJ' },
             { username: 'csppoo', password: 'read4few', section: 'UserK' },
-            { username: 'csppmd', password: 'read4few', section: 'UserL' },
+            { username: 'csppmd', password: 'read4few', section: 'UserL' }
         ],
         sourceDocuments: {
             '13mb': '4833-5453-1267',
             '20mb': '4820-0102-3171',
             '32mb': '4831-1139-9363',
             '60mb': '4840-2568-5443',
+            '95mb': '4843-6713-4915'
         },
         destinationEnvId: ':Ducot5:y:1:5:h:^F251030114932046.nev',
+    },
+    PROD: {
+        baseUrl: 'https://vault.netvoyage.com',
+        users: [
+            { username: 'csppoo1', password: 'rewq4fdsa', section: 'UserA' },
+            { username: 'csppoo2', password: 'rewq4fdsa', section: 'UserB' },
+            { username: 'csppoo3', password: 'rewq4fdsa', section: 'UserC' },
+            { username: 'csppoo4', password: 'rewq4fdsa', section: 'UserD' },
+            { username: 'csppoo5', password: 'rewq4fdsa', section: 'UserE' },
+            { username: 'csppoo6', password: 'rewq4fdsa', section: 'UserF' },
+            { username: 'csppoo7', password: 'rewq4fdsa', section: 'UserG' },
+            { username: 'csppoo8', password: 'rewq4fdsa', section: 'UserH' },
+            { username: 'csppoo9', password: 'rewq4fdsa', section: 'UserI' },
+            { username: 'csppoo10', password: 'rewq4fdsa', section: 'UserJ' },
+            { username: 'csppoo11', password: 'rewq4fdsa', section: 'UserK' },
+            { username: 'csppoo12', password: 'rewq4fdsa', section: 'UserL' },
+        ],
+        sourceDocuments: {
+            '13mb': '4833-5453-1267',
+            '20mb': '4927-8528-8592',
+            '32mb': '4831-1139-9363',
+            '60mb': '4840-2568-5443',
+            '95mb': '4843-6713-4915'
+        },
+        destinationEnvId: ":Q19:r:o:r:j:^F251030041324947.nev"
     },
 };
 

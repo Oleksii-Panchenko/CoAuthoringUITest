@@ -34,20 +34,31 @@ export class Office {
      * @param section Section name
      */
     async clickParagraphInSection(section: string): Promise<void> {
+        // Verify the office frame is actually present before attempting to use it
+        const frameElement = this.page.locator(this.officeFrameLocator);
+        try {
+            await frameElement.waitFor({ state: 'attached', timeout: 10000 });
+        } catch {
+            const pageSource = await this.page.content();
+            require('fs').writeFileSync(`page-source-no-frame-${section}-${Date.now()}.html`, pageSource);
+            await this.page.screenshot({ path: `screenshot-no-frame-${section}-${Date.now()}.png` });
+            throw new Error(`[clickParagraphInSection] office_frame not found on page when looking for section "${section}". Page source saved.`);
+        }
 
-        // // First, try to find any span containing the section text
-        // const sectionSpan = this.frame.locator(`xpath=//p[.//span[contains(text(),'${section}') and not(contains(@class,'Selected'))]]//span[contains(@class, 'EOP')]`).first();
+        // Use following:: axis — more robust than parent traversal + following-sibling
+        // Also uses contains(@class) instead of exact @class match
+        const locator = this.frame.locator(
+            `xpath=//p[.//span[contains(text(),'${section}')]]/following::p[1]//span[contains(@class,'EOP')]`
+        ).first();
 
-        // try {
-        //     // Wait for the section header to exist
-        //     await sectionSpan.waitFor({ state: 'attached', timeout: 30000 });
-        // } catch (error) {
-        //     console.log(`Section "${section}" not found. Checking for notifications...`);
-
-            
-        // }
-
-       await this.frame.locator(`xpath=//div[ .//span[contains(text(),'${section}')]]/../following-sibling::div[1]//p[@class='Paragraph']//span[@class='EOP']`).first().click({force:true});
+        try {
+            await locator.click({ force: true, timeout: 60000 });
+        } catch (error) {
+            const frameContent = await this.page.frames().find(f => f.name() === 'office_frame' || f.url().includes('wopi'))?.content() ?? await this.page.content();
+            require('fs').writeFileSync(`page-source-${section}-${Date.now()}.html`, frameContent);
+            await this.page.screenshot({ path: `screenshot-${section}-${Date.now()}.png` });
+            throw error;
+        }
     }
 
     /**
@@ -67,8 +78,10 @@ export class Office {
     }
      async verifyText(sectionToCheck: string, expectedText: string){
         await this.clickParagraphInSection(sectionToCheck);
-        const editor = this.frame.locator(this.editorLocator);
-       return await expect(editor).toHaveText(expectedText);
+        const paragraph = this.frame.locator(
+            `xpath=//p[.//span[contains(text(),'${sectionToCheck}')]]/following::p[1]`
+        ).first();
+       return await expect(paragraph).toHaveText(expectedText);
     }
     /**
      * Clear text in a section

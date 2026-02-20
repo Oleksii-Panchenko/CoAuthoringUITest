@@ -7,13 +7,13 @@ import { Helper, TestContext } from '../infrastructure/helper';
  */
 test.describe('CoAuth Session 12 Users Big File Test', () => {
     let ctx: TestContext;
-    let headless = false;
+    let headless = true;
 
     // Track text for each user
     const userTexts: string[] = new Array(12).fill('');
 
     test.beforeAll(async () => {
-        ctx = await Helper.setup(undefined, '20mb', headless, false);
+        ctx = await Helper.setup("QA", '20mb', headless, false);
     });
 
     test.afterAll(async () => {

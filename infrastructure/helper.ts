@@ -151,7 +151,7 @@ export class Helper {
         await Promise.all(users.map(async user => {
             try {
                 const responsePromise = user.page.waitForResponse('**/we/OneNote.ashx?perfTag=LockRelease_1**', { timeout: 30000 });
-                user.goToHome1();
+                user.goToHome();
                 const response = await responsePromise;
                 const status = response.status();
                 if (status !== 200) {
