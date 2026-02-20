@@ -3,6 +3,7 @@ import * as path from 'path';
 import { User } from '../pages/user';
 import { ApiHelper } from './api-helper';
 import { getEnvironmentConfig, EnvironmentConfig } from './test-data';
+import { expect } from '@playwright/test';
 
 /**
  * Test context containing all shared test state
@@ -83,7 +84,7 @@ export class Helper {
      */
     static async setup(
         envName?: string,
-        sourceDocKey: '13mb' | '20mb' | '32mb' | '60mb' = '20mb',
+        sourceDocKey: '13mb' | '20mb' | '32mb' | '60mb' | '95mb' = '20mb',
         headless: boolean = false,
         waitForIndexed: boolean = false
     ): Promise<TestContext> {
@@ -147,8 +148,19 @@ export class Helper {
     static async teardown(context: TestContext): Promise<void> {
         const { users, apiHelper, docEnvId } = context;
 
-        // Navigate all users to home
-        await Promise.all(users.map(user => user.goToHome()));
+        await Promise.all(users.map(async user => {
+            try {
+                const responsePromise = user.page.waitForResponse('**/we/OneNote.ashx?perfTag=LockRelease_1**', { timeout: 30000 });
+                user.goToHome1();
+                const response = await responsePromise;
+                const status = response.status();
+                if (status !== 200) {
+                    console.log(`Lock release returned ${status} for user - this may be expected if no lock was held`);
+                }
+            } catch (error) {
+                console.log(`Lock release not detected for user:${user.userName} - may not have held a lock`);
+            }
+        }));
 
         // Try to wait for document check-in and delete
         try {
