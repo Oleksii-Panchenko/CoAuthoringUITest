@@ -14,12 +14,20 @@
     "test:parallel": "npx playwright test coauth-parallel-runner.spec.ts --config=playwright.parallel.config.ts",
     "test:parallel:headed": "npx playwright test coauth-parallel-runner.spec.ts --config=playwright.parallel.config.ts --headed"
   },
-  "keywords": ["playwright", "coauth", "netdocuments", "testing"],
+  "keywords": [
+    "playwright",
+    "coauth",
+    "netdocuments",
+    "testing"
+  ],
   "author": "",
   "license": "ISC",
   "description": "Playwright TypeScript tests for NetDocuments CoAuth functionality",
   "devDependencies": {
     "@playwright/test": "^1.57.0",
     "@types/node": "^25.0.3"
+  },
+  "dependencies": {
+    "dotenv": "^17.3.1"
   }
 }

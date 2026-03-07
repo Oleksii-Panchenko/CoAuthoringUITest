@@ -1,7 +1,22 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx playwright test:*)"
+      "Read(C:/Users/OLEKSI~1.PAN/AppData/Local/Temp/claude/C--Users-oleksii-panchenko-Desktop-playwright/tasks/*)",
+      "Bash(cat C:/Users/OLEKSI~1.PAN/AppData/Local/Temp/claude/C--Users-oleksii-panchenko-Desktop-playwright/tasks/*)",
+      "Bash(npx playwright test:*)",
+      "Bash(where claude)",
+      "Bash(cd /c/Users/oleksii.panchenko/Desktop/playwright && ENV=QA npx playwright test tests/coauth-12-users-big-file.spec.ts --list 2>&1)",
+      "Bash(cd /c/Users/oleksii.panchenko/Desktop/playwright && npx tsc --noEmit 2>&1)",
+      "Bash(head:*)",
+      "Bash(cd /c/Users/oleksii.panchenko/Desktop/playwright && ENV=QA npx playwright test --list 2>&1)",
+      "Bash(cd /c/Users/oleksii.panchenko/Desktop/playwright && ENV=QA npx playwright test tests/coauth-12-users-big-DOCX.spec.ts -g \"CoAuth session with 12 users editing big file\" --reporter=line 2>&1)",
+      "Bash(ENV=dev npx playwright:*)",
+      "Bash(SOURCE_DOC_KEY=112mb-pptx ENV=dev npx playwright:*)",
+      "Bash(SOURCE_DOC_KEY=112mb-pptx ENV=qa npx playwright:*)",
+      "Bash(SOURCE_DOC_KEY=112mb-pptx ENV=QA npx playwright:*)",
+      "Bash(./node_modules/.bin/tsc:*)",
+      "Bash(node_modules/.bin/playwright test:*)",
+      "Bash(ENV=QA node_modules/.bin/playwright test:*)"
     ]
   }
 }

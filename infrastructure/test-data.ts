@@ -4,97 +4,63 @@ export interface UserCredentials {
     section: string;
 }
 
+export type DocKey =
+    | '13mb'
+    | '20mb'
+    | '32mb'
+    | '60mb'
+    | '95mb'
+    | '95mb-xlsx'
+    | '112mb-pptx';
+
 export interface EnvironmentConfig {
     baseUrl: string;
     users: UserCredentials[];
-    sourceDocuments: {
-        '13mb': string;
-        '20mb': string;
-        '32mb': string;
-        '60mb': string;
-        '95mb': string;
-    };
+    sourceDocuments: Record<DocKey, string>;
     destinationEnvId: string;
+    /** Resolved from SOURCE_DOC_KEY env var (default: '20mb'). */
+    sourceDocKey: DocKey;
 }
 
-const envConfigs: Record<string, EnvironmentConfig> = {
-    DEV: {
-        baseUrl: 'https://wopi-ducot.netdocuments.com',
-        users: [
-            { username: 'csppoo3', password: 'rewq4fdsa', section: 'UserA' },
-            { username: 'csppwd3', password: 'rewq4fdsa', section: 'UserB' },
-            { username: 'csppoo5', password: 'rewq4fdsa', section: 'UserC' },
-            { username: 'csppoo6', password: 'rewq4fdsa', section: 'UserD' },
-            { username: 'csppoo7', password: 'rewq4fdsa', section: 'UserE' },
-            { username: 'csppoo8', password: 'rewq4fdsa', section: 'UserF' },
-            { username: 'csppoo9', password: 'rewq4fdsa', section: 'UserG' },
-            { username: 'csppoo10', password: 'rewq4fdsa', section: 'UserH' },
-            { username: 'csppoo11', password: 'rewq4fdsa', section: 'UserI' },
-            { username: 'csppoo12', password: 'rewq4fdsa', section: 'UserJ' },
-            { username: 'csppoo', password: 'read4few', section: 'UserK' },
-            { username: 'csppmd', password: 'read4few', section: 'UserL' }
-        ],
-        sourceDocuments: {
-            '13mb': '4833-5453-1267',
-            '20mb': '4820-0102-3171',
-            '32mb': '4831-1139-9363',
-            '60mb': '4840-2568-5443',
-            '95mb': '4843-6713-4915'
-        },
-        destinationEnvId: ':Ducot5:y:1:5:h:^F251030114932046.nev',
-    },
-    QA: {
-        baseUrl: 'https://ducot.netdocuments.com',
-        users: [
-            { username: 'csppoo3', password: 'rewq4fdsa', section: 'UserA' },
-            { username: 'csppwd3', password: 'rewq4fdsa', section: 'UserB' },
-            { username: 'csppoo5', password: 'rewq4fdsa', section: 'UserC' },
-            { username: 'csppoo6', password: 'rewq4fdsa', section: 'UserD' },
-            { username: 'csppoo7', password: 'rewq4fdsa', section: 'UserE' },
-            { username: 'csppoo8', password: 'rewq4fdsa', section: 'UserF' },
-            { username: 'csppoo9', password: 'rewq4fdsa', section: 'UserG' },
-            { username: 'csppoo10', password: 'rewq4fdsa', section: 'UserH' },
-            { username: 'csppoo11', password: 'rewq4fdsa', section: 'UserI' },
-            { username: 'csppoo12', password: 'rewq4fdsa', section: 'UserJ' },
-            { username: 'csppoo', password: 'read4few', section: 'UserK' },
-            { username: 'csppmd', password: 'read4few', section: 'UserL' }
-        ],
-        sourceDocuments: {
-            '13mb': '4833-5453-1267',
-            '20mb': '4820-0102-3171',
-            '32mb': '4831-1139-9363',
-            '60mb': '4840-2568-5443',
-            '95mb': '4843-6713-4915'
-        },
-        destinationEnvId: ':Ducot5:y:1:5:h:^F251030114932046.nev',
-    },
-    PROD: {
-        baseUrl: 'https://vault.netvoyage.com',
-        users: [
-            { username: 'csppoo1', password: 'rewq4fdsa', section: 'UserA' },
-            { username: 'csppoo2', password: 'rewq4fdsa', section: 'UserB' },
-            { username: 'csppoo3', password: 'rewq4fdsa', section: 'UserC' },
-            { username: 'csppoo4', password: 'rewq4fdsa', section: 'UserD' },
-            { username: 'csppoo5', password: 'rewq4fdsa', section: 'UserE' },
-            { username: 'csppoo6', password: 'rewq4fdsa', section: 'UserF' },
-            { username: 'csppoo7', password: 'rewq4fdsa', section: 'UserG' },
-            { username: 'csppoo8', password: 'rewq4fdsa', section: 'UserH' },
-            { username: 'csppoo9', password: 'rewq4fdsa', section: 'UserI' },
-            { username: 'csppoo10', password: 'rewq4fdsa', section: 'UserJ' },
-            { username: 'csppoo11', password: 'rewq4fdsa', section: 'UserK' },
-            { username: 'csppoo12', password: 'rewq4fdsa', section: 'UserL' },
-        ],
-        sourceDocuments: {
-            '13mb': '4833-5453-1267',
-            '20mb': '4927-8528-8592',
-            '32mb': '4831-1139-9363',
-            '60mb': '4840-2568-5443',
-            '95mb': '4843-6713-4915'
-        },
-        destinationEnvId: ":Q19:r:o:r:j:^F251030041324947.nev"
-    },
-};
+function required(key: string): string {
+    const value = process.env[key];
+    if (!value) throw new Error(`Missing required env variable: ${key}`);
+    return value;
+}
 
-export function getEnvironmentConfig(env: string): EnvironmentConfig {
-    return envConfigs[env] || envConfigs['QA'];
+function getUsersFromEnv(): UserCredentials[] {
+    const users: UserCredentials[] = [];
+    let i = 1;
+    while (process.env[`USER_${i}_USERNAME`]) {
+        users.push({
+            username: process.env[`USER_${i}_USERNAME`]!,
+            password: process.env[`USER_${i}_PASSWORD`]!,
+            section:  process.env[`USER_${i}_SECTION`]!,
+        });
+        i++;
+    }
+    if (users.length === 0) {
+        throw new Error(
+            'No users found in env. Define USER_1_USERNAME, USER_1_PASSWORD, USER_1_SECTION (and USER_2_*, etc.)'
+        );
+    }
+    return users;
+}
+
+export function getEnvironmentConfig(): EnvironmentConfig {
+    return {
+        baseUrl:          required('BASE_URL'),
+        destinationEnvId: required('DESTINATION_ENV_ID'),
+        users:            getUsersFromEnv(),
+        sourceDocuments: {
+            '13mb':      required('DOC_13MB'),
+            '20mb':      required('DOC_20MB'),
+            '32mb':      required('DOC_32MB'),
+            '60mb':      required('DOC_60MB'),
+            '95mb':      required('DOC_95MB'),
+            '95mb-xlsx': required('DOC_95MB_XLSX'),
+            '112mb-pptx': required('DOC_112MB_PPTX'),
+        },
+        sourceDocKey: (process.env.SOURCE_DOC_KEY ?? '95mb-xlsx') as DocKey,
+    };
 }

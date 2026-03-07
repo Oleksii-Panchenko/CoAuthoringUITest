@@ -11,9 +11,12 @@ node_modules/
 logs/
 *.log
 
-# Environment variables
+# Environment variables (.env.example is intentionally NOT listed — it is safe to commit)
 .env
 .env.local
+.env.dev
+.env.qa
+.env.prod
 
 # IDE
 .vscode/

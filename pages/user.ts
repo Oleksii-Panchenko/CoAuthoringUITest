@@ -1,5 +1,5 @@
-import { Page, BrowserContext, chromium, Browser, expect } from '@playwright/test';
-import { Office } from './office';
+import { Page, BrowserContext, chromium, Browser } from '@playwright/test';
+import { Office, IDocumentEditor } from './office';
 
 const BROWSER_ARGS = [
     '--disable-features=LocalNetworkAccessChecks',
@@ -11,109 +11,132 @@ const BROWSER_ARGS = [
 ];
 
 export class User {
-    public page!: Page;
-    public context!: BrowserContext;
-    public browser!: Browser;
+    // Backing fields are undefined until initialize() is called.
+    // Use ensurePage() / ensureOffice() inside methods; expose `page` as
+    // Page | undefined so external guards (e.g. `if (!user.page)`) keep working.
+    private _page?: Page;
+    private _context?: BrowserContext;
+    private _browser?: Browser;
+    private _office?: Office;
+
+    public get page(): Page | undefined { return this._page; }
+
     public readonly userName: string;
     public readonly password: string;
     public readonly baseUrl: string;
     public readonly section: string;
-    public office!: Office;
+    public readonly fileType: 'docx' | 'pptx' | 'xlsx';
 
-    // "Allow and Continue" slideout button — distinct from the task pane close button in Office
-    private readonly allowAndContinueLocator = 'xpath=//div[@id="FarPaneRegion"]//button[text()="Allow and Continue"]';
+    private get homeUrl(): string {
+        return `${this.baseUrl}/neWeb2/home`;
+    }
 
-    constructor(userName: string, password: string, baseUrl: string, section: string) {
+    private ensurePage(): Page {
+        if (!this._page) throw new Error(`[${this.userName}] Not initialized. Call initialize() first.`);
+        return this._page;
+    }
+
+    private ensureOffice(): Office {
+        if (!this._office) throw new Error(`[${this.userName}] Not initialized. Call initialize() first.`);
+        return this._office;
+    }
+
+    /** Returns the IDocumentEditor for this user's file type. */
+    private editor(): IDocumentEditor {
+        return this.ensureOffice().getEditor(this.fileType);
+    }
+
+    constructor(userName: string, password: string, baseUrl: string, section: string, fileType: 'docx' | 'pptx' | 'xlsx' = 'docx') {
         this.userName = userName;
         this.password = password;
         this.baseUrl = baseUrl;
         this.section = section;
+        this.fileType = fileType;
     }
 
     async initialize(headless: boolean = true): Promise<void> {
         const args = headless ? BROWSER_ARGS : [...BROWSER_ARGS, '--start-maximized'];
-        this.browser = await chromium.launch({ headless, args });
-        this.context = await this.browser.newContext({ viewport: { width: 1920, height: 1080 } });
-        this.page = await this.context.newPage();
-        this.office = new Office(this.page);
+        this._browser = await chromium.launch({ headless, args });
+        this._context = await this._browser.newContext({ viewport: { width: 1920, height: 1080 } });
+        this._page = await this._context.newPage();
+        this._office = new Office(this._page);
     }
 
-    async login(): Promise<boolean> {
-        await this.page.goto(this.baseUrl);
-        await this.page.locator('#username').fill(this.userName);
-        await this.page.locator('#password').fill(this.password);
-        await this.page.locator('#loginBtn').click();
-        await this.page.waitForURL(`${this.baseUrl}/neWeb2/home`, { timeout: 60000 });
-        return this.page.url() === `${this.baseUrl}/neWeb2/home`;
+    async login(): Promise<void> {
+        const page = this.ensurePage();
+        await page.goto(this.baseUrl);
+        await page.locator('#username').fill(this.userName);
+        await page.locator('#password').fill(this.password);
+        await page.locator('#loginBtn').click();
+        // waitForURL throws if the URL doesn't match — no second check needed
+        await page.waitForURL(this.homeUrl, { timeout: 60000 });
     }
 
     async openDocument(docEnvId: string, maxRetries: number = 3): Promise<void> {
+        const page = this.ensurePage();
         const url = `${this.baseUrl}/neWeb2/app/wopiEditor.aspx?envPath=${docEnvId}&docNum=1&verNum=1&mode=edit`;
 
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            let isVisible = false;
-
-            await this.page.goto(url, { waitUntil: 'load' });
-            await this.waitForDocumentLoaded();
+            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 75000 });
 
             try {
-                await this.office.waitForFrameAttached(10000);
+                await this.ensureOffice().waitForFrameAttached(30000);
+                await this.waitForDocumentLoaded();
             } catch {
                 if (attempt < maxRetries) {
-                    console.log(`[${this.userName}] Office frame not present, reloading (attempt ${attempt}/${maxRetries})...`);
-                    await this.page.reload({ waitUntil: 'load', timeout: 30000 });
-                    await this.waitForDocumentLoaded();
+                    console.log(`[${this.userName}] Document not ready, reloading (attempt ${attempt}/${maxRetries})...`);
                     continue;
                 } else {
-                    console.log(`[${this.userName}] Office frame not found after ${maxRetries} attempts`);
+                    throw new Error(`[${this.userName}] Document not ready after ${maxRetries} attempts`);
                 }
             }
 
-            const officeForm = this.page.locator('#office_form');
-            const action = await officeForm.getAttribute('action');
-            const oldWopi = action?.includes('wopi-') || false;
-            const closeButton = this.page.frameLocator('#office_frame').locator(this.allowAndContinueLocator);
+            // DOCX-specific: check for slideout addin and handle it.
+            if (this.fileType === 'docx') {
+                const office = this.ensureOffice();
+                const officeForm = page.locator('#office_form');
+                const action = await officeForm.getAttribute('action');
+                const oldWopi = action?.includes('wopi-') ?? false;
 
-            try {
-                let i = 0;
-                await expect(async () => {
-                    if (i !== 0) {
-                        await this.page.reload({ waitUntil: 'load', timeout: 30000 });
-                        await this.waitForDocumentLoaded();
-                    }
-                    await expect(closeButton).toBeVisible({ timeout: 10000 });
-                    i++;
-                }).toPass({
-                    intervals: [10_000],
-                    timeout: 200_000
-                });
-                isVisible = true;
-            } catch {
-                console.log(`[${this.userName}] Slideout not visible`);
-                isVisible = false;
-            }
+                const isVisible = await office.isSlideoutVisible();
+                if (!isVisible) {
+                    console.log(`[${this.userName}] Slideout not visible`);
+                }
 
-            if (isVisible && !oldWopi) {
-                await this.office.closeAddin();
+                if (isVisible && !oldWopi) {
+                    await office.closeAddin();
+                }
             }
 
             return;
         }
     }
 
-    async goToHome(): Promise<void> {
-        await this.page.goto(this.baseUrl);
-        await this.page.waitForURL(`${this.baseUrl}/neWeb2/home`, { timeout: 60000 });
+    async goToHome(maxRetries: number = 3): Promise<void> {
+        const page = this.ensurePage();
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                await page.goto(this.baseUrl, { timeout: 60000 });
+                await page.waitForURL(this.homeUrl, { timeout: 60000 });
+                return;
+            } catch {
+                if (attempt === maxRetries) throw new Error(`[${this.userName}] Could not navigate to home after ${maxRetries} attempts`);
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+        }
     }
 
     async getTextFromSection(sectionToCheck: string): Promise<string> {
-        const text = await this.office.getTextFromSection(sectionToCheck);
-        await this.office.moveOutCursor(this.section);
+        const text = await this.editor().getTextFromSection(sectionToCheck);
+        // DOCX needs an additional cursor-move to avoid leaving focus in the paragraph.
+        if (this.fileType === 'docx') {
+            await this.ensureOffice().moveOutCursor(this.section);
+        }
         return text;
     }
 
     async verifyText(sectionToCheck: string, expectedText: string): Promise<void> {
-        await this.office.verifyText(sectionToCheck, expectedText);
+        await this.editor().verifyText(sectionToCheck, expectedText);
     }
 
     async verifySectionsText(oldValues: Array<[string, string]>): Promise<boolean> {
@@ -124,19 +147,23 @@ export class User {
         return true;
     }
 
-    async editDocAsync(newText: string): Promise<void> {
-        await this.office.editDocAsync(this.section, newText);
-        await this.office.moveOutCursor(this.section);
-        await this.office.waitToBeSaved();
+    async editDocAsync(newText: string, i: number): Promise<void> {
+        await this.editor().editSection(this.section, newText, i);
+        await this.editor().waitToBeSaved();
     }
 
     async waitForDocumentLoaded(timeout: number = 65000): Promise<void> {
-        await this.office.waitForDocumentLoaded(timeout);
+        // `timeout` is only used by the DOCX path; PPT and XLSX have internal timeouts.
+        if (this.fileType === 'docx') {
+            await this.ensureOffice().waitForDocumentLoaded(timeout);
+        } else {
+            await this.editor().waitForReady();
+        }
     }
 
     async close(): Promise<void> {
-        if (this.page) await this.page.close();
-        if (this.context) await this.context.close();
-        if (this.browser) await this.browser.close();
+        if (this._page) await this._page.close();
+        if (this._context) await this._context.close();
+        if (this._browser) await this._browser.close();
     }
 }

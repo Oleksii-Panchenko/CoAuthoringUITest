@@ -1,124 +1,80 @@
-# Quick Start Guide
+# Quick Start
 
-## Setup
-
-1. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-
-2. **Verify installation**:
-   ```bash
-   npx playwright --version
-   ```
-
-## Running Tests
-
-### Basic Commands
+## 1. Install dependencies
 
 ```bash
-# Run all tests (headless)
+npm install
+npx playwright install chromium
+```
+
+## 2. Configure your environment
+
+```bash
+cp .env.example .env.qa   # or .env.dev / .env.prod / .env.custom
+```
+
+Edit the file and set all required variables. See `.env.example` for the full list.
+
+## 3. Run tests
+
+```bash
+# Default (loads .env.qa)
 npm test
 
-# Run CoAuth test specifically
-npm run test:coauth
+# Named environment
+ENV=DEV npx playwright test
+ENV=PROD npx playwright test
 
-# Run with visible browser (headed mode)
-npm run test:coauth:headed
+# Explicit env file (any name or path)
+ENV_FILE=.env.custom npx playwright test
+ENV_FILE=configs/sprint-42.env npx playwright test
 
-# Run in debug mode (step through test)
-npm run test:debug
+# Specific test
+npx playwright test -g "CoAuth session with 12 users editing big file"
 
-# Run in UI mode (interactive)
-npm run test:ui
+# Headed mode
+npx playwright test --headed
+
+# Interactive UI
+npx playwright test --ui
 ```
 
-### Environment-Specific Tests
+## 4. View results
 
-```bash
-# Run on DEV environment
-ENV=DEV npm run test:coauth
-
-# Run on QA environment
-ENV=QA npm run test:coauth
-
-# Run on PROD environment
-ENV=PROD npm run test:coauth
-```
-
-## Test Configuration
-
-### Modify Test Behavior
-
-Edit `playwright.config.ts` to change:
-- Timeout values
-- Number of workers
-- Browser settings
-- Screenshot/video capture
-
-### Modify Test Data
-
-Edit `tests/coauth-web-test-big-file.spec.ts` to change:
-- User credentials
-- Document IDs
-- Number of iterations
-- Section names
-
-## Viewing Results
-
-### HTML Report
-After test execution, view the HTML report:
 ```bash
 npx playwright show-report
 ```
 
-### Logs
-Check the `logs/` directory for detailed execution logs.
+Logs are written to `logs/`. Screenshots and videos on failure go to `test-results/`.
 
-### Screenshots/Videos
-On test failure, screenshots and videos are saved in:
-- `test-results/` directory
+---
+
+## Configuration reference
+
+| What to change | Where |
+|---|---|
+| URLs, credentials, document IDs | `.env.qa` / `.env.dev` / `.env.prod` / custom file |
+| Timeouts, workers, browser settings | `playwright.config.ts` |
+| Headless mode | `const headless = true` in the test file |
+| Parallel session count | `numberOfParallelRuns` in `coauth-parallel-runner.spec.ts` |
+
+## How env file selection works
+
+Priority: `ENV_FILE` > `ENV` > default `.env.qa`
+
+```bash
+ENV_FILE=path/to/file.env   # loads that exact file
+ENV=DEV                      # loads .env.dev
+ENV=PROD                     # loads .env.prod
+(nothing)                    # loads .env.qa
+```
 
 ## Troubleshooting
 
-### Common Issues
-
-1. **Browser not installed**:
-   ```bash
-   npx playwright install chromium
-   ```
-
-2. **Port already in use**:
-   - Close other browser instances
-   - Check for zombie processes
-
-3. **Timeout errors**:
-   - Increase timeout in `playwright.config.ts`
-   - Check network connectivity
-
-4. **Login failures**:
-   - Verify credentials in test file
-   - Check environment URL accessibility
-
-## Key Files
-
-- `tests/coauth-web-test-big-file.spec.ts` - Main test file
-- `pages/user.ts` - User interaction logic
-- `infrastructure/api-helper.ts` - API operations
-- `infrastructure/helper.ts` - Utility functions
-- `playwright.config.ts` - Test configuration
-
-## Next Steps
-
-1. Review the test execution in headed mode to understand the flow
-2. Check logs for detailed information
-3. Modify test data as needed for your environment
-4. Add more test scenarios if required
-
-## Support
-
-For issues or questions:
-1. Check the logs in `logs/` directory
-2. Review the README.md for detailed documentation
-3. Check Playwright documentation: https://playwright.dev
-
+| Problem | Solution |
+|---|---|
+| `Missing required env variable` | Check your env file has all keys from `.env.example` |
+| `No users found in env` | Add `USER_1_USERNAME`, `USER_1_PASSWORD`, `USER_1_SECTION` to your env file |
+| Browser not installed | `npx playwright install chromium` |
+| Timeout errors | Increase `timeout` in `playwright.config.ts` or pass `--timeout 0` |
+| Login failures | Check credentials and `BASE_URL` in your env file |

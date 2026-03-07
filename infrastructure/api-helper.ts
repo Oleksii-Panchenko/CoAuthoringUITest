@@ -166,7 +166,7 @@ export class ApiHelper {
      * @param pollInterval Polling interval in milliseconds (default: 3000)
      * @returns The new document modified timestamp
      */
-    async waitForDocumentModifiedChanged(docEnvId: string, initialModified: number, timeout: number = 240000, pollInterval: number = 3000): Promise<number> {
+    async waitForDocumentModifiedChanged(docEnvId: string, initialModified: number, timeout: number = 180000, pollInterval: number = 3000): Promise<number> {
         console.log(`Waiting for document modified date to change from ${new Date(initialModified).toISOString()}...`);
 
         let result = initialModified;

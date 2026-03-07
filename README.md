@@ -1,186 +1,157 @@
 # Playwright CoAuth Tests
 
-This project contains automated tests for NetDocuments CoAuth functionality using Playwright and TypeScript.
-
-## Overview
-
-This test suite is a port of the C# Selenium-based CoAuthWebTestBigFile tests to TypeScript with Playwright. It tests collaborative editing scenarios with multiple users editing a document simultaneously.
+Automated tests for NetDocuments CoAuth (collaborative authoring) functionality using Playwright and TypeScript.
 
 ## Project Structure
 
 ```
 playwright/
-├── infrastructure/          # Helper classes and utilities
-│   ├── api-helper.ts       # NetDocuments API operations (copy, delete, check in/out)
-│   └── helper.ts           # General utility functions (logging, random strings, etc.)
-├── pages/                  # Page objects
-│   └── user.ts            # User class for browser sessions and document interactions
-├── tests/                  # Test files
-│   └── coauth-web-test-big-file.spec.ts  # Main CoAuth test
-├── logs/                   # Test execution logs
-├── playwright.config.ts    # Playwright configuration
-└── package.json           # Project dependencies and scripts
+├── infrastructure/
+│   ├── api-helper.ts        # NetDocuments API operations (copy, delete, check in/out)
+│   ├── helper.ts            # Setup/teardown, logging, random string utilities
+│   └── test-data.ts         # EnvironmentConfig interface; reads config from process.env
+├── pages/
+│   └── user.ts              # User class: browser session, login, open/edit document
+├── tests/
+│   ├── coauth-12-users-big-DOCX.spec.ts   # 12-user CoAuth tests on large DOCX files
+│   └── coauth-parallel-runner.spec.ts     # Parallel multi-instance runner
+├── .env.dev                 # DEV environment variables (git-ignored)
+├── .env.qa                  # QA environment variables (git-ignored)
+├── .env.prod                # PROD environment variables (git-ignored)
+├── .env.example             # Template — copy and fill in for your environment
+├── playwright.config.ts     # Playwright configuration; loads env file at startup
+└── package.json
 ```
-
-## Features
-
-- **Multi-user testing**: Simulates 3 users editing a document simultaneously
-- **API integration**: Uses NetDocuments REST API for document operations
-- **Page Object Model**: Clean separation of test logic and page interactions
-- **Comprehensive logging**: Detailed logs for debugging
-- **Environment support**: Supports DEV, QA, and PROD environments
 
 ## Prerequisites
 
-- Node.js (v16 or higher)
-- npm or yarn
+- Node.js v16 or higher
+- npm
 
 ## Installation
 
-1. Install dependencies:
 ```bash
 npm install
-```
-
-2. Install Playwright browsers (if not already installed):
-```bash
 npx playwright install chromium
 ```
 
+## Environment Setup
+
+All credentials and environment-specific values are stored in `.env` files — never hardcoded.
+
+### 1. Create your env file
+
+```bash
+cp .env.example .env.qa   # or .env.dev, .env.prod, .env.custom, etc.
+```
+
+### 2. Fill in the required variables
+
+| Variable | Description |
+|---|---|
+| `BASE_URL` | NetDocuments environment base URL |
+| `DESTINATION_ENV_ID` | Target cabinet/folder ID for copied documents |
+| `USER_N_USERNAME` | Username for user N (N = 1, 2, 3, …) |
+| `USER_N_PASSWORD` | Password for user N |
+| `USER_N_SECTION` | Document section assigned to user N |
+| `DOC_13MB` … `DOC_95MB` | Source document IDs by size |
+
+Users are loaded dynamically — define as many `USER_N_*` blocks as needed, starting from `USER_1_*`.
+
+See `.env.example` for a full template.
+
 ## Running Tests
 
-### Run all tests
+### Select environment
+
+The config is loaded from an env file resolved in this priority order:
+
+| Variable | Example | Resolves to |
+|---|---|---|
+| `ENV_FILE` | `ENV_FILE=configs/team-a.env` | that exact file |
+| `ENV` | `ENV=DEV` | `.env.dev` |
+| _(default)_ | | `.env.qa` |
+
 ```bash
+# Named environment
+ENV=QA npx playwright test
+ENV=DEV npx playwright test
+ENV=PROD npx playwright test
+
+# Explicit file (any name or path)
+ENV_FILE=.env.custom npx playwright test
+ENV_FILE=configs/sprint-42.env npx playwright test
+```
+
+### Run specific tests
+
+```bash
+# All tests
 npm test
+
+# 12-user big file test suite
+npx playwright test tests/coauth-12-users-big-DOCX.spec.ts
+
+# Specific test by name
+npx playwright test -g "CoAuth session with 12 users editing big file"
+npx playwright test -g "Update test: edit 300 times with 60s sleep" --timeout 0
+
+# Headed mode (visible browser)
+npx playwright test --headed
+
+# Interactive UI
+npx playwright test --ui
+
+# Parallel runner
+npx playwright test tests/coauth-parallel-runner.spec.ts --config=playwright.parallel.config.ts
 ```
 
-### Run CoAuth test specifically
-```bash
-npm run test:coauth
-```
+## Tests
 
-### Run tests in headed mode (visible browser)
-```bash
-npm run test:headed
-```
+### `coauth-12-users-big-DOCX.spec.ts`
 
-### Run CoAuth test in headed mode
-```bash
-npm run test:coauth:headed
-```
+| Test | Description |
+|---|---|
+| CoAuth session with 12 users editing big file | 3-phase test: open → edit → verify modified date |
+| Update test: edit 300 times with 60s sleep | Opens document once, edits 300 times with a 60 s pause after each edit (~5 h minimum runtime) |
 
-### Run tests in debug mode
-```bash
-npm run test:debug
-```
+### `coauth-parallel-runner.spec.ts`
 
-### Run tests in UI mode
-```bash
-npm run test:ui
-```
-
-## Environment Configuration
-
-Set the `ENV` environment variable to specify the test environment:
-
-```bash
-# For DEV environment
-ENV=DEV npm run test:coauth
-
-# For QA environment
-ENV=QA npm run test:coauth
-
-# For PROD environment
-ENV=PROD npm run test:coauth
-```
-
-### Environment Details
-
-- **DEV**: `https://wopi-ducot.netdocuments.com`
-- **QA**: `https://ducot.netdocuments.com`
-- **PROD**: `https://vault.netvoyage.com`
-
-## Test Credentials
-
-The test uses different user credentials based on the environment:
-
-### Lab (DEV/QA)
-- User A: `csppoo` / `read4few`
-- User B: `csppmd` / `read4few`
-- User C: `csppwd3` / `rewq4fdsa`
-
-### Vault (PROD)
-- User A: `csppoo1` / `rewq4fdsa`
-- User B: `csppoo2` / `rewq4fdsa`
-- User C: `csppoo3` / `rewq4fdsa`
-
-## Test Flow
-
-1. **Setup**: 
-   - Initialize 3 user sessions
-   - Login all users in parallel
-   - Copy source document to create test document
-
-2. **Test Execution** (2 iterations):
-   - Open document for all 3 users
-   - Verify existing content
-   - Each user edits their designated section with random text
-   - Close documents
-
-3. **Teardown**:
-   - Check in document
-   - Delete test document
-   - Close all browser sessions
+Runs multiple 12-user sessions in parallel (default: 5 instances = 60 browsers total).
 
 ## Key Classes
 
-### User (`pages/user.ts`)
-Represents a user session with browser and page. Provides methods for:
-- Login
-- Opening documents
-- Editing document sections
-- Getting text from sections
-- Navigating between pages
+### `User` (`pages/user.ts`)
+Browser session for a single user. Methods: `login()`, `openDocument()`, `editDocAsync()`, `verifyText()`, `getTextFromSection()`, `goToHome()`, `close()`.
 
-### ApiHelper (`infrastructure/api-helper.ts`)
-Provides NetDocuments API operations:
-- Copy documents
-- Delete documents
-- Check document status
-- Wait for check-in
+### `ApiHelper` (`infrastructure/api-helper.ts`)
+NetDocuments REST API wrapper: `copyDocument()`, `deleteDocument()`, `waitForDocumentCheckedIn()`, `waitForDocumentModifiedChanged()`, `getDocumentModified()`.
 
-### Helper (`infrastructure/helper.ts`)
-General utility functions:
-- Wait for conditions
-- Generate random strings
-- Logging
-- File cleanup
-
-## Troubleshooting
-
-### Tests timing out
-- Increase timeout in `playwright.config.ts`
-- Check network connectivity to NetDocuments environment
-
-### Login failures
-- Verify credentials are correct for the environment
-- Check if the environment URL is accessible
-
-### Document operations failing
-- Ensure source and destination document IDs are valid
-- Check user permissions in NetDocuments
+### `helper.ts`
+- `setup()` — initialises browsers, logs in users, copies source document, returns `TestContext`
+- `teardown()` — releases locks, waits for check-in, deletes document, closes browsers
+- `closeUser()` — gracefully closes a single user session
+- `log()` — writes timestamped entries to `logs/`
 
 ## Logs
 
-Test execution logs are stored in the `logs/` directory with timestamps.
+Each test run writes to a timestamped file in `logs/`. The directory is wiped at the start of each run.
 
-## Comparison with Original C# Tests
+## Viewing Results
 
-This TypeScript/Playwright implementation maintains the same test logic as the original C# Selenium tests while leveraging Playwright's modern features:
+```bash
+npx playwright show-report
+```
 
-- Async/await throughout
-- Better error handling
-- Built-in waiting mechanisms
-- Parallel execution support
-- Modern TypeScript syntax
+Screenshots and videos on failure are saved in `test-results/`.
 
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `Missing required env variable: X` | Add `X` to your `.env.*` file |
+| `No users found in env` | Define at least `USER_1_USERNAME`, `USER_1_PASSWORD`, `USER_1_SECTION` |
+| Login failures | Verify credentials in your `.env.*` file; check that `BASE_URL` is reachable |
+| Timeout errors | Increase `timeout` in `playwright.config.ts` or pass `--timeout 0` |
+| Memory issues with parallel runs | Reduce `numberOfParallelRuns` in the parallel runner or set `headless = true` |
+| Document operations failing | Verify `DESTINATION_ENV_ID` and `DOC_*` values are valid for the target environment |
