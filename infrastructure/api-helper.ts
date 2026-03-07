@@ -1,5 +1,30 @@
 import { Page, expect } from '@playwright/test';
 
+interface NdDocumentInfo {
+    checkedOut?: string | null;
+    standardAttributes?: {
+        size: number;
+        modified: string;
+    };
+}
+
+interface NdApi {
+    document: {
+        copy(opts: { id: string; destination: string; name: string }): { envId: string };
+        deleteItem(opts: { id: string; permanent: string }): void;
+        getInfo(opts: { id: string }): NdDocumentInfo;
+        checkout(opts: { id: string }): void;
+        checkin(opts: { id: string }): void;
+    };
+    search: {
+        performSearch(opts: { cabGuid: string; criteria: string }): { list: unknown[] } | null;
+    };
+}
+
+declare global {
+    interface Window { api: NdApi; }
+}
+
 /**
  * Helper class for NetDocuments REST API operations
  * Provides methods for copy, delete, check in/out operations
@@ -22,7 +47,7 @@ export class ApiHelper {
     async copyDocument(sourceDocEnvId: string, destinationEnvId: string, env: string, waitForIndexed: boolean = true): Promise<{ envId: string; docName: string }> {
         // Wait for API to be available
         await this.page.waitForFunction(() => {
-            return typeof (window as any).api !== 'undefined' && (window as any).api !== null;
+            return typeof window.api !== 'undefined' && window.api !== null;
         });
 
         const timestamp = Date.now();
@@ -30,7 +55,7 @@ export class ApiHelper {
 
         const envId = await this.page.evaluate(
             ({ source, destination, name }) => {
-                return (window as any).api.document.copy({
+                return window.api.document.copy({
                     id: source,
                     destination: destination,
                     name: name
@@ -54,7 +79,7 @@ export class ApiHelper {
     async deleteDocument(docEnvId: string): Promise<void> {
         await this.page.evaluate(
             (envId) => {
-                return (window as any).api.document.deleteItem({
+                return window.api.document.deleteItem({
                     id: envId,
                     permanent: 't'
                 });
@@ -71,7 +96,7 @@ export class ApiHelper {
     async isDocumentCheckedOut(docEnvId: string): Promise<boolean> {
         const checkedOut = await this.page.evaluate(
             (envId) => {
-                return (window as any).api.document.getInfo({ id: envId }).checkedOut;
+                return window.api.document.getInfo({ id: envId }).checkedOut;
             },
             docEnvId
         );
@@ -87,7 +112,7 @@ export class ApiHelper {
     async waitForDocumentCheckedIn(docEnvId: string, timeout: number = 60000, polling:number = 5000): Promise<void> {
         await this.page.waitForFunction(
             (envId) => {
-                const info = (window as any).api.document.getInfo({ id: envId });
+                const info = window.api.document.getInfo({ id: envId });
                 return info.checkedOut === null || info.checkedOut === undefined;
             },
             docEnvId,
@@ -100,10 +125,10 @@ export class ApiHelper {
      * @param docEnvId Document environment ID
      * @returns Document information object
      */
-    async getDocumentInfo(docEnvId: string): Promise<any> {
+    async getDocumentInfo(docEnvId: string): Promise<NdDocumentInfo> {
         return await this.page.evaluate(
             (envId) => {
-                return (window as any).api.document.getInfo({ id: envId });
+                return window.api.document.getInfo({ id: envId });
             },
             docEnvId
         );
@@ -116,7 +141,7 @@ export class ApiHelper {
     async checkOutDocument(docEnvId: string): Promise<void> {
         await this.page.evaluate(
             (envId) => {
-                return (window as any).api.document.checkout({ id: envId });
+                return window.api.document.checkout({ id: envId });
             },
             docEnvId
         );
@@ -129,7 +154,7 @@ export class ApiHelper {
     async checkInDocument(docEnvId: string): Promise<void> {
         await this.page.evaluate(
             (envId) => {
-                return (window as any).api.document.checkin({ id: envId });
+                return window.api.document.checkin({ id: envId });
             },
             docEnvId
         );
@@ -230,7 +255,7 @@ export class ApiHelper {
                 return await this.page.evaluate(
                     ({ cabGuid, docName }) => {
                         try {
-                            const result = (window as any).api.search.performSearch({
+                            const result = window.api.search.performSearch({
                                 cabGuid: cabGuid,
                                 criteria: ` =3(${docName})`
                             });

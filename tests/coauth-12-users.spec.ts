@@ -1,5 +1,5 @@
 import { test } from '@playwright/test';
-import { setup, teardown, closeUser, log, randomString, TestContext } from '../infrastructure/helper';
+import { TestSession, closeUser, log, randomString } from '../infrastructure/helper';
 
 interface TestPhase {
     open: boolean;
@@ -15,18 +15,18 @@ const PHASES: TestPhase[] = [
 ];
 
 test.describe('CoAuth Session 12 Users Big File Test', () => {
-    let ctx: TestContext | undefined;
+    let ctx: TestSession | undefined;
 
     // Track text for each user — sized dynamically after setup
     let userTexts: string[] = [];
 
     test.beforeAll(async () => {
-        ctx = await setup();
+        ctx = await TestSession.create();
         userTexts = new Array(ctx.users.length).fill('');
     });
 
     test.afterAll(async () => {
-        await teardown(ctx);
+        await ctx?.teardown();
     });
 
     test.skip('Update test: edit 300 times with 60s sleep', async () => {
@@ -53,7 +53,7 @@ test.describe('CoAuth Session 12 Users Big File Test', () => {
 
             await test.step(`Edit documents (iteration ${i + 1}/${ITERATIONS})`, async () => {
                 await Promise.all(
-                    users.map((user, idx) => user.editDocAsync(userTexts[idx], i))
+                    users.map((user, idx) => user.editDoc(userTexts[idx], i))
                 );
             });
 
@@ -111,14 +111,14 @@ test.describe('CoAuth Session 12 Users Big File Test', () => {
             if (phase.edit) {
                 await test.step(`Edit documents for iteration ${i}`, async () => {
                     await Promise.all(
-                        users.map((user, idx) => user.editDocAsync(userTexts[idx], i))
+                        users.map((user, idx) => user.editDoc(userTexts[idx], i))
                     );
                 });
             }
 
             if (phase.checkDate) {
-                await test.step.skip('Close documents and verify modified date', async () => {
-                    await Promise.all(users.map(user => closeUser(user, apiHelper, docEnvId, false, false)));
+                await test.step('Close documents and verify modified date', async () => {
+                    await Promise.all(users.map(user => closeUser(user, apiHelper, docEnvId, false)));
 
                     const modifiedCheckStartTime = Date.now();
                     log(`Iteration ${i}: Checking document modified date update...`);

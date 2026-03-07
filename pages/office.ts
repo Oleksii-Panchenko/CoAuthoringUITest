@@ -1,4 +1,50 @@
 import { Page, FrameLocator, Locator, expect } from '@playwright/test';
+import { FileType } from '../infrastructure/test-data';
+
+/**
+ * Shared save-indicator polling used by PptxEditor and XlsxEditor.
+ * Polls for a Saving/Saved indicator for up to 8s. If saving is detected,
+ * waits until it disappears. Falls back to a 5s safety wait if no indicator appears.
+ */
+/**
+ * Races a readiness signal against the Office error dialog.
+ * Throws if "Sorry, we ran into a problem" appears before `readySignal` resolves.
+ */
+async function exitEditMode(page: Page): Promise<void> {
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+}
+
+async function raceReadyOrError(frame: FrameLocator, readySignal: Promise<void>, timeout: number): Promise<void> {
+    const errorDialog = frame.locator('text=Sorry, we ran into a problem')
+        .waitFor({ state: 'attached', timeout })
+        .then(() => { throw new Error('Office error dialog detected'); });
+    await Promise.race([readySignal, errorDialog]);
+}
+
+async function waitForSaveIndicator(frame: FrameLocator, page: Page, saveTimeout: number): Promise<void> {
+    const savingLocator = frame.locator(
+        '[aria-label*="Saving"], [title*="Saving"], [aria-label*="saving"], [title*="saving"]'
+    ).first();
+    const savedLocator = frame.locator(
+        '[aria-label*="Saved"], [title*="Saved"], [aria-label*="saved"], [title*="saved"]'
+    ).first();
+
+    const POLL_MS  = 200;
+    const TOTAL_MS = 8_000;
+    const deadline = Date.now() + TOTAL_MS;
+    while (Date.now() < deadline) {
+        const isSaving = await savingLocator.isVisible().catch(() => false);
+        if (isSaving) {
+            await expect(savingLocator).not.toBeVisible({ timeout: saveTimeout });
+            return;
+        }
+        const isSaved = await savedLocator.isVisible().catch(() => false);
+        if (isSaved) return;
+        await page.waitForTimeout(POLL_MS);
+    }
+    await page.waitForTimeout(5_000);
+}
 
 const TIMEOUTS = {
     FRAME_ATTACH:    10_000,
@@ -220,27 +266,41 @@ export class DocxEditor implements IDocumentEditor {
     }
 }
 
-// ─── PowerPoint Online (PPTX) ────────────────────────────────────────────────
+// ─── Base class for Office Online editors (PPTX, XLSX) ───────────────────────
 
-export class PptxEditor implements IDocumentEditor {
-    private readonly page: Page;
-    private readonly frame: FrameLocator;
+abstract class BaseOnlineEditor implements IDocumentEditor {
+    constructor(protected readonly page: Page, protected readonly frame: FrameLocator) {}
 
-    constructor(page: Page, frame: FrameLocator) {
-        this.page = page;
-        this.frame = frame;
-    }
+    protected abstract getReadyLocator(): Locator;
+    protected abstract getReadyTimeout(): number;
 
     async waitForReady(): Promise<void> {
-        // Race between successful load (slide thumbnails appearing) and a PPT error dialog.
-        const thumbnailReady = this.frame.locator('[role="option"]').first()
-            .waitFor({ state: 'attached', timeout: TIMEOUTS.PPT_READY });
+        const ready = this.getReadyLocator().waitFor({ state: 'attached', timeout: this.getReadyTimeout() });
+        await raceReadyOrError(this.frame, ready, this.getReadyTimeout());
+    }
 
-        const errorDialog = this.frame.locator('text=Sorry, we ran into a problem')
-            .waitFor({ state: 'attached', timeout: TIMEOUTS.PPT_READY })
-            .then(() => { throw new Error('PPT Online error dialog detected'); });
+    async waitToBeSaved(): Promise<void> {
+        await waitForSaveIndicator(this.frame, this.page, TIMEOUTS.SAVE);
+    }
 
-        await Promise.race([thumbnailReady, errorDialog]);
+    abstract getTextFromSection(section: string): Promise<string>;
+    abstract editSection(section: string, newText: string, iteration: number): Promise<void>;
+    abstract verifyText(section: string, expectedText: string): Promise<void>;
+}
+
+// ─── PowerPoint Online (PPTX) ────────────────────────────────────────────────
+
+export class PptxEditor extends BaseOnlineEditor {
+    constructor(page: Page, frame: FrameLocator) {
+        super(page, frame);
+    }
+
+    protected getReadyLocator(): Locator {
+        return this.frame.locator('[role="option"]').first();
+    }
+
+    protected getReadyTimeout(): number {
+        return TIMEOUTS.PPT_READY;
     }
 
     private async selectUserSlide(section: string): Promise<void> {
@@ -248,6 +308,14 @@ export class PptxEditor implements IDocumentEditor {
         const thumbnails = this.frame.locator('[role="option"]');
         await thumbnails.first().click({ timeout: TIMEOUTS.PARAGRAPH_CLICK });
         await thumbnails.nth(targetIndex).click({ force: true, timeout: TIMEOUTS.PARAGRAPH_CLICK });
+    }
+
+    private async getContentParagraph(section: string): Promise<Locator> {
+        const slideContent = this.frame.locator(
+            `xpath=//div[.//p[.//span[text()="${section}"]] and @class="SlideContent"]`
+        );
+        await slideContent.waitFor({ state: 'attached', timeout: TIMEOUTS.PARAGRAPH_CLICK });
+        return slideContent.locator('xpath=.//p').nth(1);
     }
 
     /** PPT does not implement text-read — always returns empty string. */
@@ -258,12 +326,7 @@ export class PptxEditor implements IDocumentEditor {
     async verifyText(section: string, expectedText: string): Promise<void> {
         if (expectedText === '') return;
         await this.selectUserSlide(section);
-
-        const slideContent = this.frame.locator(
-            `xpath=//div[.//p[.//span[text()="${section}"]] and @class="SlideContent"]`
-        );
-        await slideContent.waitFor({ state: 'attached', timeout: TIMEOUTS.PARAGRAPH_CLICK });
-        const contentPara = slideContent.locator('xpath=.//p').nth(1);
+        const contentPara = await this.getContentParagraph(section);
 
         await expect.poll(async () => {
             await contentPara.click({ force: true, timeout: 5_000 }).catch(() => {});
@@ -274,26 +337,16 @@ export class PptxEditor implements IDocumentEditor {
             timeout: TIMEOUTS.PARAGRAPH_CLICK,
             intervals: [2000],
         }).toBe(expectedText);
-        await this.page.keyboard.press('Escape');
-        await this.page.keyboard.press('Escape');
+        await exitEditMode(this.page);
     }
 
     async editSection(section: string, newText: string, _iteration: number): Promise<void> {
         await this.page.keyboard.press('Escape');
         await this.waitForReady();
         await this.selectUserSlide(section);
-
-        const slideContent = this.frame.locator(
-            `xpath=//div[.//p[.//span[text()="${section}"]] and @class="SlideContent"]`
-        );
-        await slideContent.waitFor({ state: 'attached', timeout: TIMEOUTS.PARAGRAPH_CLICK });
-
         // The content paragraph (subtitle placeholder) is CSS-hidden when empty.
-        // Click the content paragraph with force:true to enter text-edit mode for the
-        // CONTENT shape specifically (not the title/label shape).
-        // force:true dispatches a synthetic click event that PPT Online handles to
-        // enter text-edit mode, even for elements with display:none.
-        const contentPara = slideContent.locator('xpath=.//p').nth(1);
+        // Click with force:true to enter text-edit mode even for display:none elements.
+        const contentPara = await this.getContentParagraph(section);
         await contentPara.click({ force: true, timeout: TIMEOUTS.PARAGRAPH_CLICK });
 
         // Wait briefly for PPT text-edit mode to activate after the click.
@@ -312,9 +365,7 @@ export class PptxEditor implements IDocumentEditor {
         await this.page.keyboard.press('Control+Shift+End');
         await this.page.waitForTimeout(200);
         await this.page.keyboard.type(newText, { delay: 50 });
-
-        await this.page.keyboard.press('Escape');
-        await this.page.keyboard.press('Escape');
+        await exitEditMode(this.page);
     }
 
     /**
@@ -328,31 +379,8 @@ export class PptxEditor implements IDocumentEditor {
      *
      * Without this wait, PPT auto-save may still be in progress when the document
      * is re-opened in the next phase, causing the server to return stale content.
+     * Inherited from BaseOnlineEditor.waitToBeSaved().
      */
-    async waitToBeSaved(): Promise<void> {
-        const savingLocator = this.frame.locator(
-            '[aria-label*="Saving"], [title*="Saving"], [aria-label*="saving"], [title*="saving"]'
-        ).first();
-        const savedLocator = this.frame.locator(
-            '[aria-label*="Saved"], [title*="Saved"], [aria-label*="saved"], [title*="saved"]'
-        ).first();
-
-        const POLL_MS  = 200;
-        const TOTAL_MS = 8_000;
-        const deadline = Date.now() + TOTAL_MS;
-        while (Date.now() < deadline) {
-            const isSaving = await savingLocator.isVisible().catch(() => false);
-            if (isSaving) {
-                await expect(savingLocator).not.toBeVisible({ timeout: TIMEOUTS.SAVE });
-                return;
-            }
-            const isSaved = await savedLocator.isVisible().catch(() => false);
-            if (isSaved) return;
-            await this.page.waitForTimeout(POLL_MS);
-        }
-        // No save indicator found — use a fixed safety wait.
-        await this.page.waitForTimeout(5_000);
-    }
 }
 
 // ─── Excel Online (XLSX) ─────────────────────────────────────────────────────
@@ -362,27 +390,18 @@ export class PptxEditor implements IDocumentEditor {
 // The 95mb-xlsx source document (DOC_95MB_XLSX) uses column Z. Do NOT change to 'L'.
 const XLSX_EDIT_COLUMN = 'Z';
 
-export class XlsxEditor implements IDocumentEditor {
-    private readonly page: Page;
-    private readonly frame: FrameLocator;
-
+export class XlsxEditor extends BaseOnlineEditor {
     constructor(page: Page, frame: FrameLocator) {
-        this.page = page;
-        this.frame = frame;
+        super(page, frame);
     }
 
-    async waitForReady(): Promise<void> {
-        // Excel Online ready indicator: the Worksheet sheet tab appears once the
-        // spreadsheet grid has fully loaded. This is more reliable than [role="grid"]
-        // which Excel Online does not use.
-        const sheetTabReady = this.frame.locator('[role="tab"]').first()
-            .waitFor({ state: 'attached', timeout: TIMEOUTS.XLSX_READY });
+    protected getReadyLocator(): Locator {
+        // Sheet tab appears once the spreadsheet grid has fully loaded.
+        return this.frame.locator('[role="tab"]').first();
+    }
 
-        const errorDialog = this.frame.locator('text=Sorry, we ran into a problem')
-            .waitFor({ state: 'attached', timeout: TIMEOUTS.XLSX_READY })
-            .then(() => { throw new Error('Excel Online error dialog detected'); });
-
-        await Promise.race([sheetTabReady, errorDialog]);
+    protected getReadyTimeout(): number {
+        return TIMEOUTS.XLSX_READY;
     }
 
     // ── Formula Bar ──────────────────────────────────────────────────────────
@@ -466,9 +485,8 @@ export class XlsxEditor implements IDocumentEditor {
      * Dismisses any active edit first, then types the cell address and presses Enter.
      */
     private async navigateToCell(section: string): Promise<void> {
-        // Press Escape twice to exit any active cell edit mode before navigating.
-        await this.page.keyboard.press('Escape');
-        await this.page.keyboard.press('Escape');
+        // Exit any active cell edit mode before navigating.
+        await exitEditMode(this.page);
 
         // Dismiss any co-auth conflict/sync modal dialogs that block interaction.
         await this.dismissModal();
@@ -551,8 +569,7 @@ export class XlsxEditor implements IDocumentEditor {
             if (attempt < maxAttempts) {
                 // Transient co-auth sync events or concurrent browser load may interrupt
                 // typing mid-keystroke. Escape any lingering edit state and retry.
-                await this.page.keyboard.press('Escape');
-                await this.page.keyboard.press('Escape');
+                await exitEditMode(this.page);
                 await this.page.waitForTimeout(1000);
             } else {
                 throw new Error(
@@ -591,37 +608,8 @@ export class XlsxEditor implements IDocumentEditor {
      *
      * Note: aria-label values differ between O365/OneDrive and custom WOPI hosts.
      * We match on several known patterns for resilience.
+     * Inherited from BaseOnlineEditor.waitToBeSaved().
      */
-    async waitToBeSaved(): Promise<void> {
-        const savingLocator = this.frame.locator(
-            '[aria-label*="Saving"], [title*="Saving"], [aria-label*="saving"], [title*="saving"]'
-        ).first();
-        const savedLocator = this.frame.locator(
-            '[aria-label*="Saved"], [title*="Saved"], [aria-label*="saved"], [title*="saved"]'
-        ).first();
-
-        // Poll for the Saving/Saved indicator (8s max).
-        // Excel Online triggers a WOPI PUT after each committed edit.
-        // Increased from 3s to 8s to allow for concurrent WOPI PUTs from 12 users
-        // to be serialised and acknowledged by the server without conflict-revert.
-        const POLL_MS  = 200;
-        const TOTAL_MS = 8_000;
-        const deadline = Date.now() + TOTAL_MS;
-        while (Date.now() < deadline) {
-            const isSaving = await savingLocator.isVisible().catch(() => false);
-            if (isSaving) {
-                await expect(savingLocator).not.toBeVisible({ timeout: TIMEOUTS.SAVE });
-                return;
-            }
-            const isSaved = await savedLocator.isVisible().catch(() => false);
-            if (isSaved) return;
-            await this.page.waitForTimeout(POLL_MS);
-        }
-        // If no indicator shown, add a fixed safety wait before the caller navigates.
-        // Increased from 2s to 5s: allows in-flight WOPI PUTs from 12 concurrent users
-        // to reach the server and be acknowledged before the next operation begins.
-        await this.page.waitForTimeout(5_000);
-    }
 }
 
 // ─── Office facade ───────────────────────────────────────────────────────────
@@ -639,101 +627,46 @@ export class Office {
     private readonly frame: FrameLocator;
     private readonly frameElement: Locator;
 
+    private readonly docx: DocxEditor;
+    private readonly pptx: PptxEditor;
+    private readonly xlsx: XlsxEditor;
+
     constructor(page: Page) {
         this.page = page;
         this.frame = this.page.frameLocator('#office_frame');
         this.frameElement = this.page.locator('#office_frame');
+
+        this.docx = new DocxEditor(this.page, this.frame, this.frameElement);
+        this.pptx = new PptxEditor(this.page, this.frame);
+        this.xlsx = new XlsxEditor(this.page, this.frame);
     }
 
     async waitForFrameAttached(timeout: number = TIMEOUTS.FRAME_ATTACH): Promise<void> {
         await expect(this.frameElement).toBeAttached({ timeout });
     }
 
-    /** Factory — returns the correct IDocumentEditor for the given file type. */
-    getEditor(fileType: 'docx' | 'pptx' | 'xlsx'): IDocumentEditor {
+    /** Returns the correct IDocumentEditor for the given file type. */
+    getEditor(fileType: FileType): IDocumentEditor {
         switch (fileType) {
-            case 'docx': return new DocxEditor(this.page, this.frame, this.frameElement);
-            case 'pptx': return new PptxEditor(this.page, this.frame);
-            case 'xlsx': return new XlsxEditor(this.page, this.frame);
+            case 'docx': return this.docx;
+            case 'pptx': return this.pptx;
+            case 'xlsx': return this.xlsx;
         }
     }
-
-    // ── Backwards-compatible delegating methods ───────────────────────────────
-    // These preserve the existing external API so no changes are needed in
-    // user.ts or the test spec.
 
     async waitForDocumentLoaded(timeout: number = TIMEOUTS.DOCUMENT_LOAD): Promise<void> {
         await this.frame.locator('#animation-container').waitFor({ state: 'hidden', timeout });
     }
 
-    async waitForPptReady(): Promise<void> {
-        const pptEditor = new PptxEditor(this.page, this.frame);
-        await pptEditor.waitForReady();
-    }
-
-    async waitForXlsxReady(): Promise<void> {
-        const xlsxEditor = new XlsxEditor(this.page, this.frame);
-        await xlsxEditor.waitForReady();
-    }
-
     async closeAddin(): Promise<void> {
-        const docxEditor = new DocxEditor(this.page, this.frame, this.frameElement);
-        await docxEditor.closeAddin();
+        await this.docx.closeAddin();
     }
 
     async isSlideoutVisible(): Promise<boolean> {
-        const docxEditor = new DocxEditor(this.page, this.frame, this.frameElement);
-        return docxEditor.isSlideoutVisible();
-    }
-
-    async getTextFromSection(section: string): Promise<string> {
-        const docxEditor = new DocxEditor(this.page, this.frame, this.frameElement);
-        return docxEditor.getTextFromSection(section);
+        return this.docx.isSlideoutVisible();
     }
 
     async moveOutCursor(section: string): Promise<void> {
-        const docxEditor = new DocxEditor(this.page, this.frame, this.frameElement);
-        await docxEditor.moveOutCursor(section);
-    }
-
-    async verifyText(section: string, expectedText: string): Promise<void> {
-        const docxEditor = new DocxEditor(this.page, this.frame, this.frameElement);
-        await docxEditor.verifyText(section, expectedText);
-    }
-
-    async editDocAsync(section: string, newText: string): Promise<void> {
-        const docxEditor = new DocxEditor(this.page, this.frame, this.frameElement);
-        // editSection in DocxEditor includes moveOutCursor
-        await docxEditor.editSection(section, newText, 0);
-    }
-
-    async waitToBeSaved(): Promise<void> {
-        const docxEditor = new DocxEditor(this.page, this.frame, this.frameElement);
-        await docxEditor.waitToBeSaved();
-    }
-
-    async verifyTextPPTX(section: string, expectedText: string): Promise<void> {
-        const pptEditor = new PptxEditor(this.page, this.frame);
-        await pptEditor.verifyText(section, expectedText);
-    }
-
-    async editPptDocAsync(section: string, newText: string, i: number): Promise<void> {
-        const pptEditor = new PptxEditor(this.page, this.frame);
-        await pptEditor.editSection(section, newText, i);
-    }
-
-    async getTextFromXlsxSection(section: string): Promise<string> {
-        const xlsxEditor = new XlsxEditor(this.page, this.frame);
-        return xlsxEditor.getTextFromSection(section);
-    }
-
-    async editXlsxDocAsync(section: string, newText: string): Promise<void> {
-        const xlsxEditor = new XlsxEditor(this.page, this.frame);
-        await xlsxEditor.editSection(section, newText, 0);
-    }
-
-    async verifyTextXLSX(section: string, expectedText: string): Promise<void> {
-        const xlsxEditor = new XlsxEditor(this.page, this.frame);
-        await xlsxEditor.verifyText(section, expectedText);
+        await this.docx.moveOutCursor(section);
     }
 }

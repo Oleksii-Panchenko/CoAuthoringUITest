@@ -1,3 +1,5 @@
+export type FileType = 'docx' | 'pptx' | 'xlsx';
+
 export interface UserCredentials {
     username: string;
     password: string;
