@@ -1,11 +1,10 @@
 # 12-User CoAuth Testing
 
-## Test Files
+## Test File
 
 | File | Purpose |
 |---|---|
-| `coauth-12-users-big-DOCX.spec.ts` | Single session — 12 users on a large (20 MB) document |
-| `coauth-parallel-runner.spec.ts` | Multiple parallel sessions (default: 5 × 12 = 60 browsers) |
+| `coauth-12-users.spec.ts` | 12-user session — 3-phase edit test + 300-iteration endurance test |
 
 ---
 
@@ -48,6 +47,14 @@ DOC_20MB=4820-0102-3171
 DOC_32MB=4831-1139-9363
 DOC_60MB=4840-2568-5443
 DOC_95MB=4843-6713-4915
+DOC_95MB_XLSX=xxxx-xxxx-xxxx
+DOC_112MB_PPTX=xxxx-xxxx-xxxx
+
+# Source document key — determines file type
+# DOCX: 13mb, 20mb, 32mb, 60mb, 95mb
+# XLSX: 95mb-xlsx
+# PPTX: 112mb-pptx
+SOURCE_DOC_KEY=20mb
 ```
 
 See `.env.example` for the full template.
@@ -56,6 +63,7 @@ See `.env.example` for the full template.
 
 ## Document Sections
 
+### DOCX (Word Online)
 The test document must contain one section heading per user, named exactly:
 
 ```
@@ -64,6 +72,12 @@ UserG  UserH  UserI  UserJ  UserK  UserL
 ```
 
 Each heading should be followed by a paragraph where that user will write.
+
+### PPTX (PowerPoint Online)
+Each user's section maps to a slide (UserA → slide 1, UserB → slide 2, etc.). Each slide must have a title matching the section name and a subtitle placeholder for content.
+
+### XLSX (Excel Online)
+Each user writes to column Z, row mapped by section letter (UserA → Z1, UserB → Z2, etc.). The source XLSX must have column Z pre-populated.
 
 ---
 
@@ -84,39 +98,39 @@ ENV_FILE=.env.custom npx playwright test   # explicit file
 npm run test:coauth:12users
 npm run test:coauth:12users:headed
 
-npx playwright test tests/coauth-12-users-big-DOCX.spec.ts
+npx playwright test tests/coauth-12-users.spec.ts
 ```
 
 ### Specific test within the file
 
 ```bash
 # 3-phase collaborative editing test
-npx playwright test -g "CoAuth session with 12 users editing big file"
+npx playwright test -g "Edit"
 
-# 300-iteration endurance test (~5 h minimum runtime)
+# 300-iteration endurance test (~5 h minimum runtime) — currently skipped
 npx playwright test -g "Update test: edit 300 times with 60s sleep" --timeout 0
 ```
 
-### Parallel runner (5 sessions × 12 users = 60 browsers)
+### Switch file type
 
 ```bash
-npm run test:parallel
-npm run test:parallel:headed
-
-npx playwright test tests/coauth-parallel-runner.spec.ts --config=playwright.parallel.config.ts
+SOURCE_DOC_KEY=95mb-xlsx npx playwright test
+SOURCE_DOC_KEY=112mb-pptx npx playwright test
 ```
 
 ---
 
-## Tests in `coauth-12-users-big-DOCX.spec.ts`
-
-### CoAuth session with 12 users editing big file
+## Test Phases (`Edit` test)
 
 Three phases run sequentially:
 
-1. **Open + edit** — all users open the document and edit their section in parallel
-2. **Edit + verify date** — users edit again; after closing, the API confirms the modified date changed
-3. **Re-open** — users reopen the document
+| Phase | Open | Edit | Check Date | Description |
+|---|---|---|---|---|
+| 0 | Yes | Yes | No | Open all documents, edit sections |
+| 1 | No | Yes | Yes | Edit again, close, verify modified date via API |
+| 2 | Yes | No | No | Re-open documents, verify text only |
+
+Each phase also verifies that every user can see every other user's previous edits (cross-user verification).
 
 ### Update test: edit 300 times with 60s sleep
 
@@ -125,7 +139,7 @@ Opens the document once, then loops 300 times:
 - Waits 60 seconds
 - Repeats
 
-Minimum runtime is ~5 hours. Use `--timeout 0` to remove the test timeout limit.
+Minimum runtime is ~5 hours. Use `--timeout 0` to remove the test timeout limit. Currently marked `test.skip`.
 
 ---
 
@@ -133,10 +147,10 @@ Minimum runtime is ~5 hours. Use `--timeout 0` to remove the test timeout limit.
 
 | Setting | Location |
 |---|---|
-| Number of parallel sessions | `numberOfParallelRuns` in `coauth-parallel-runner.spec.ts` |
-| Workers | `workers` in `playwright.parallel.config.ts` (keep in sync with above) |
-| Headless mode | `const headless = true/false` in the test file |
-| Test timeout | `timeout` in `playwright.config.ts` |
+| Headless mode | `HEADLESS` env var or `HEADLESS_DEFAULT` in `playwright.config.ts` |
+| Test timeout | `timeout` in `playwright.config.ts` (default: ~5.3h) |
+| Source document | `SOURCE_DOC_KEY` in your `.env.*` file |
+| Workers | `workers` in `playwright.config.ts` |
 
 ---
 
@@ -144,8 +158,8 @@ Minimum runtime is ~5 hours. Use `--timeout 0` to remove the test timeout limit.
 
 | Setup | RAM | CPU |
 |---|---|---|
-| 12 browsers (single session) | 8 GB+ | 4+ cores |
-| 60 browsers (5 parallel sessions) | 32 GB+ | 16+ cores |
+| 12 browsers (single session, headed) | 8 GB+ | 4+ cores |
+| 12 browsers (single session, headless) | 4 GB+ | 4+ cores |
 
 ---
 
@@ -157,4 +171,5 @@ Minimum runtime is ~5 hours. Use `--timeout 0` to remove the test timeout limit.
 | `Missing required env variable` | Check your env file against `.env.example` |
 | Section not found | Verify document has all sections with exact names (UserA–UserL) |
 | Timeout errors | Increase `timeout` in `playwright.config.ts` or pass `--timeout 0` |
-| Out of memory | Reduce `numberOfParallelRuns` or set `headless = true` |
+| Out of memory | Set `HEADLESS=true` or reduce user count |
+| PPT error dialog | Server-side issue with large PPTX; try a smaller document |

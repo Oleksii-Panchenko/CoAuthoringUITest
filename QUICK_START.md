@@ -27,10 +27,16 @@ ENV=PROD npx playwright test
 
 # Explicit env file (any name or path)
 ENV_FILE=.env.custom npx playwright test
-ENV_FILE=configs/sprint-42.env npx playwright test
 
 # Specific test
-npx playwright test -g "CoAuth session with 12 users editing big file"
+npx playwright test -g "Edit"
+
+# Switch file type via source document key
+SOURCE_DOC_KEY=95mb-xlsx npx playwright test
+SOURCE_DOC_KEY=112mb-pptx npx playwright test
+
+# Headless mode override
+HEADLESS=true npx playwright test
 
 # Headed mode
 npx playwright test --headed
@@ -54,9 +60,9 @@ Logs are written to `logs/`. Screenshots and videos on failure go to `test-resul
 | What to change | Where |
 |---|---|
 | URLs, credentials, document IDs | `.env.qa` / `.env.dev` / `.env.prod` / custom file |
+| Source document / file type | `SOURCE_DOC_KEY` in your `.env.*` file (e.g. `20mb`, `95mb-xlsx`, `112mb-pptx`) |
 | Timeouts, workers, browser settings | `playwright.config.ts` |
-| Headless mode | `const headless = true` in the test file |
-| Parallel session count | `numberOfParallelRuns` in `coauth-parallel-runner.spec.ts` |
+| Headless mode | `HEADLESS` env var (`true`/`false`) or `HEADLESS_DEFAULT` in `playwright.config.ts` |
 
 ## How env file selection works
 
@@ -68,6 +74,16 @@ ENV=DEV                      # loads .env.dev
 ENV=PROD                     # loads .env.prod
 (nothing)                    # loads .env.qa
 ```
+
+## Supported file types
+
+The file type is auto-detected from `SOURCE_DOC_KEY`:
+
+| Key | File Type | Editor |
+|---|---|---|
+| `13mb`, `20mb`, `32mb`, `60mb`, `95mb` | DOCX | Word Online |
+| `95mb-xlsx` | XLSX | Excel Online |
+| `112mb-pptx` | PPTX | PowerPoint Online |
 
 ## Troubleshooting
 

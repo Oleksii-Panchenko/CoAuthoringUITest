@@ -3,6 +3,7 @@
 ## Current State
 
 The framework supports up to 12 concurrent users collaborating on large NetDocuments files.
+Supports three file types: DOCX (Word Online), PPTX (PowerPoint Online), and XLSX (Excel Online).
 All environment configuration (URLs, credentials, document IDs) is externalised into `.env` files.
 
 ---
@@ -29,6 +30,16 @@ ENV=PROD          →  .env.prod
 
 `infrastructure/test-data.ts` reads all config from `process.env` — no hardcoded values.
 
+### File type detection
+
+The `SOURCE_DOC_KEY` env var (default: `20mb`) determines which source document is used. The file type is auto-detected from the key:
+
+| Key pattern | File Type |
+|---|---|
+| Contains `pptx` | PPTX (PowerPoint Online) |
+| Contains `xlsx` | XLSX (Excel Online) |
+| Everything else | DOCX (Word Online) |
+
 ### User loading
 
 Users are defined in the env file with numbered blocks:
@@ -46,18 +57,14 @@ The framework loads however many `USER_N_*` blocks are present — add or remove
 
 ---
 
-## Test Files
+## Test File
 
-### `coauth-12-users-big-DOCX.spec.ts`
+### `coauth-12-users.spec.ts`
 
 | Test | Description |
 |---|---|
-| CoAuth session with 12 users editing big file | 3-phase test: open → edit → verify modified date |
-| Update test: edit 300 times with 60s sleep | 300-iteration endurance test with 60 s pause per iteration (~5 h) |
-
-### `coauth-parallel-runner.spec.ts`
-
-Runs multiple 12-user sessions in parallel (default: 5 instances = 60 browsers).
+| Edit | 3-phase test: open → edit → verify modified date → re-open → verify. Cross-user text verification at each phase. |
+| Update test: edit 300 times with 60s sleep | 300-iteration endurance test with 60s pause per iteration (~5h). Currently `test.skip`. |
 
 ---
 
@@ -65,11 +72,12 @@ Runs multiple 12-user sessions in parallel (default: 5 instances = 60 browsers).
 
 | File | Role |
 |---|---|
-| `playwright.config.ts` | Loads dotenv; configures timeout, workers, browser |
-| `infrastructure/test-data.ts` | Reads `EnvironmentConfig` from `process.env` |
-| `infrastructure/helper.ts` | `setup()`, `teardown()`, `closeUser()`, `log()` |
-| `infrastructure/api-helper.ts` | NetDocuments REST API operations |
-| `pages/user.ts` | Browser session per user |
+| `playwright.config.ts` | Loads dotenv; configures timeout, workers, browser, headless mode |
+| `infrastructure/test-data.ts` | Reads `EnvironmentConfig` from `process.env`; defines `FileType`, `DocKey` types |
+| `infrastructure/helper.ts` | `TestSession` class (create/teardown), `closeUser()`, `log()`, `randomString()` |
+| `infrastructure/api-helper.ts` | NetDocuments REST API: copy, delete, check in/out, modified/size polling, search indexing |
+| `pages/office.ts` | `Office` facade, `IDocumentEditor` interface, `DocxEditor`, `PptxEditor`, `XlsxEditor` |
+| `pages/user.ts` | `User` (page-object) + `UserSession` (browser lifecycle) |
 
 ---
 
@@ -87,9 +95,13 @@ ENV=PROD npx playwright test
 ENV_FILE=.env.custom npx playwright test
 
 # Specific test
-npx playwright test -g "CoAuth session with 12 users editing big file"
+npx playwright test -g "Edit"
 npx playwright test -g "Update test: edit 300 times with 60s sleep" --timeout 0
 
-# Parallel runner
-npx playwright test tests/coauth-parallel-runner.spec.ts --config=playwright.parallel.config.ts
+# Switch file type
+SOURCE_DOC_KEY=95mb-xlsx npx playwright test
+SOURCE_DOC_KEY=112mb-pptx npx playwright test
+
+# Headless override
+HEADLESS=true npx playwright test
 ```

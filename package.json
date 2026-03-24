@@ -7,12 +7,8 @@
     "test:headed": "npx playwright test --headed",
     "test:debug": "npx playwright test --debug",
     "test:ui": "npx playwright test --ui",
-    "test:coauth": "npx playwright test coauth-web-test-big-file.spec.ts",
-    "test:coauth:headed": "npx playwright test coauth-web-test-big-file.spec.ts --headed",
     "test:coauth:12users": "npx playwright test coauth-12-users.spec.ts",
-    "test:coauth:12users:headed": "npx playwright test coauth-12-users.spec.ts --headed",
-    "test:parallel": "npx playwright test coauth-parallel-runner.spec.ts --config=playwright.parallel.config.ts",
-    "test:parallel:headed": "npx playwright test coauth-parallel-runner.spec.ts --config=playwright.parallel.config.ts --headed"
+    "test:coauth:12users:headed": "npx playwright test coauth-12-users.spec.ts --headed"
   },
   "keywords": [
     "playwright",
