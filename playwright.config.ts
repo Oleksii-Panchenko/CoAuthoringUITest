@@ -7,6 +7,8 @@ const envFile = process.env.ENV_FILE
     ?? `.env.${(process.env.ENV ?? 'qa').toLowerCase()}`;
 dotenv.config({ path: path.resolve(__dirname, envFile) });
 
+export const HEADLESS_DEFAULT = false;
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -44,6 +46,7 @@ export default defineConfig({
     /* Default timeout for navigation */
     navigationTimeout: 60000,
     viewport: { width: 2056, height: 1329 },
+    headless: HEADLESS_DEFAULT,
   },
 
   /* Configure projects for major browsers */

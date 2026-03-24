@@ -1,6 +1,32 @@
 {
   "permissions": {
     "allow": [
+      "Read(*)",
+      "Edit(*)",
+      "Write(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "mcp__playwright-test__browser_click",
+      "mcp__playwright-test__browser_drag",
+      "mcp__playwright-test__browser_evaluate",
+      "mcp__playwright-test__browser_file_upload",
+      "mcp__playwright-test__browser_fill_form",
+      "mcp__playwright-test__browser_generate_locator",
+      "mcp__playwright-test__browser_handle_dialog",
+      "mcp__playwright-test__browser_hover",
+      "mcp__playwright-test__browser_navigate",
+      "mcp__playwright-test__browser_navigate_back",
+      "mcp__playwright-test__browser_network_requests",
+      "mcp__playwright-test__browser_press_key",
+      "mcp__playwright-test__browser_select_option",
+      "mcp__playwright-test__browser_take_screenshot",
+      "mcp__playwright-test__browser_type",
+      "mcp__playwright-test__browser_wait_for",
+      "mcp__playwright-test__generator_read_log",
+      "mcp__playwright-test__generator_setup_page",
+      "mcp__playwright-test__generator_write_test",
+      "mcp__playwright-test__planner_save_plan",
+      "mcp__playwright-test__planner_setup_page",
       "Read(C:/Users/OLEKSI~1.PAN/AppData/Local/Temp/claude/C--Users-oleksii-panchenko-Desktop-playwright/tasks/*)",
       "Bash(cat C:/Users/OLEKSI~1.PAN/AppData/Local/Temp/claude/C--Users-oleksii-panchenko-Desktop-playwright/tasks/*)",
       "Bash(npx playwright test:*)",
@@ -16,7 +42,24 @@
       "Bash(SOURCE_DOC_KEY=112mb-pptx ENV=QA npx playwright:*)",
       "Bash(./node_modules/.bin/tsc:*)",
       "Bash(node_modules/.bin/playwright test:*)",
-      "Bash(ENV=QA node_modules/.bin/playwright test:*)"
+      "Bash(ENV=QA node_modules/.bin/playwright test:*)",
+      "Bash(node:*)",
+      "Bash(npx:*)",
+      "mcp__playwright-test__test_run",
+      "mcp__playwright-test__test_debug",
+      "mcp__playwright-test__test_list",
+      "mcp__playwright-test__browser_snapshot",
+      "mcp__playwright-test__browser_console_messages",
+      "WebFetch(domain:docs.datadoghq.com)",
+      "Bash(SOURCE_DOC_KEY=95mb-xlsx HEADED=1 node_modules/.bin/playwright test:*)",
+      "Bash(cp:*)",
+      "Bash(SOURCE_DOC_KEY=112mb-pptx npx playwright test tests/coauth-12-users.spec.ts --reporter=list 2>&1 | tee logs/run-pptx.txt; echo \"EXIT_CODE_PPTX=$?\")",
+      "Bash(SOURCE_DOC_KEY=95mb-xlsx npx playwright test tests/coauth-12-users.spec.ts --reporter=list 2>&1 | tee logs/run-xlsx.txt; echo \"EXIT_CODE_XLSX=$?\")",
+      "Bash(find:*)"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "playwright-test"
+  ]
 }

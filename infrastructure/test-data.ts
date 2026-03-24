@@ -63,6 +63,6 @@ export function getEnvironmentConfig(): EnvironmentConfig {
             '95mb-xlsx': required('DOC_95MB_XLSX'),
             '112mb-pptx': required('DOC_112MB_PPTX'),
         },
-        sourceDocKey: (process.env.SOURCE_DOC_KEY ?? '95mb-xlsx') as DocKey,
+        sourceDocKey: (process.env.SOURCE_DOC_KEY ?? '20mb') as DocKey,
     };
 }

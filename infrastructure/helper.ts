@@ -3,6 +3,7 @@ import * as path from 'path';
 import { User, UserSession } from '../pages/user';
 import { ApiHelper } from './api-helper';
 import { getEnvironmentConfig, EnvironmentConfig, FileType } from './test-data';
+import { HEADLESS_DEFAULT } from '../playwright.config';
 
 export class TestSession {
     private readonly _users: User[];
@@ -61,11 +62,14 @@ export class TestSession {
         const sourceDocEnvId = config.sourceDocuments[sourceDocKey];
         const { destinationEnvId } = config;
 
-        const headed = process.env.HEADED === '1' || process.env.HEADED === 'true';
-        log(`Initializing ${config.users.length} browsers (headless=${!headed})...`);
+        const headlessEnv = process.env.HEADLESS;
+        const headless = headlessEnv !== undefined
+            ? headlessEnv === '1' || headlessEnv === 'true'
+            : HEADLESS_DEFAULT;
+        log(`Initializing ${config.users.length} browsers (headless=${headless})...`);
         const sessions = await Promise.all(
             config.users.map(userConfig => UserSession.create(
-                userConfig.username, userConfig.password, config.baseUrl, userConfig.section, fileType, !headed
+                userConfig.username, userConfig.password, config.baseUrl, userConfig.section, fileType, headless
             ))
         );
         const users = sessions.map(s => s.user);
